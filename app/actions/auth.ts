@@ -29,7 +29,7 @@ export async function signUp(
     return { error: 'Passwords do not match.' }
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.auth.signUp({ email, password })
 
   if (error) {
@@ -56,7 +56,7 @@ export async function signIn(
     return { error: 'Invalid email or password.' }
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
@@ -67,7 +67,7 @@ export async function signIn(
 }
 
 export async function signOut(): Promise<void> {
-  const supabase = createClient()
+  const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
 }

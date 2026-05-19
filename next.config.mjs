@@ -7,6 +7,10 @@ const nextConfig = {
         hostname: "nextjs.org",
         pathname: "/icons/**",
       },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
     ],
   },
 };
