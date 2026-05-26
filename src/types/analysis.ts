@@ -33,3 +33,16 @@ export type AnalysisResult = {
   data?: CategoryAnalysis
   error?: string
 }
+
+export type CategoryResults = {
+  [categoryKey: string]: CategoryAnalysis
+}
+
+export type AnalysisRow = {
+  id: string
+  user_id: string
+  image_urls: string[]
+  category_results: CategoryResults | null
+  updated_at: string | null
+  created_at: string
+}

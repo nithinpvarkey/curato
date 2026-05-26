@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // Routes that require an authenticated session.
 // Any pathname that starts with one of these prefixes will redirect
 // unauthenticated visitors to /login.
-const PROTECTED_PREFIXES = ["/dashboard"];
+const PROTECTED_PREFIXES = ["/dashboard", "/analysis/"];
 
 export async function middleware(request: NextRequest) {
   // supabaseResponse must be kept in sync with any response mutations so

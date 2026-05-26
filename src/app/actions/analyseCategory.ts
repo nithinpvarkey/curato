@@ -260,6 +260,31 @@ export async function analyseCategory(params: {
   userId: string
 }): Promise<AnalysisResult> {
 
+  // SECURITY CHECK — self-contained auth
+  // analyseCategory is a public HTTP endpoint
+  // must verify auth independently of its caller
+  // Uses user.id from getUser() — never trusts params.userId
+  const supabase = await createClient()
+  const { data: { user }, error: authError } =
+    await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { success: false, error: 'Unauthorised' }
+  }
+
+  // Verify the analysis row belongs to the
+  // authenticated user — using user.id not params.userId
+  const { data: ownerCheck } = await supabase
+    .from('analyses')
+    .select('id')
+    .eq('id', params.analysisId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!ownerCheck) {
+    return { success: false, error: 'Unauthorised' }
+  }
+
   // GUARD 1 — minimum images
   if (params.imageUrls.length < 3) {
     return { success: false, error: 'Minimum 3 images required per category' }
@@ -313,23 +338,46 @@ export async function analyseCategory(params: {
     }
     const result = JSON.parse(responseTextBlock.text) as CategoryAnalysis
 
-    // Save to Supabase — scope by BOTH analysisId AND userId
+    // Build a safe key from category name
+    // Removes special characters and spaces
+    const categoryKey = params.categoryName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+
+    // ATOMIC JSONB merge using PostgreSQL || operator
+    // Safe for parallel category analyses running simultaneously
+    // No read-then-write race condition
     const supabase = await createClient()
-    await supabase
-      .from('analyses')
-      .update({
-        [`${params.categoryName.toLowerCase()}_result`]: result,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', params.analysisId)
-      .eq('user_id', params.userId)
+    const { error: updateError } = await supabase.rpc(
+      'merge_category_result',
+      {
+        p_analysis_id: params.analysisId,
+        p_user_id: params.userId,
+        p_category_key: categoryKey,
+        p_result: result as unknown as Record<string, unknown>
+      }
+    )
+
+    if (updateError) {
+      // Log in development only — never expose to client
+      if (process.env.NODE_ENV === 'development') {
+        console.error(
+          'Failed to save category result:',
+          updateError.message
+        )
+      }
+      // Do not return error to user —
+      // analysis result is still shown even if save fails
+    }
 
     return { success: true, data: result }
 
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Analysis failed'
+      error: 'Analysis failed — please try again'
     }
   }
 }

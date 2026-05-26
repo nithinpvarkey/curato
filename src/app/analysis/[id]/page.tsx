@@ -1,6 +1,8 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
+import CategoryAnalyser from '@/components/analysis/CategoryAnalyser'
+import CategorySkeleton from '@/components/analysis/CategorySkeleton'
 
 // Force dynamic rendering on every request
 // Prevents Next.js from statically caching
@@ -109,18 +111,45 @@ function AnalysisSkeleton() {
 async function AnalysisContent({ id }: { id: string }) {
   const { analysis } = await validateAndFetchAnalysis(id)
 
+  // Parse image_urls from the analysis row
+  // This is the array of Cloudinary URLs stored in Supabase
+  const imageUrls: string[] = analysis.image_urls ?? []
+
+  // For now we treat all images as one category
+  // In Task 7.5 we will split by category groups
+  // This validates the parallel streaming pattern works
+  const categories = [
+    { name: 'Flowers', urls: imageUrls },
+  ]
+
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-semibold mb-2">
         Your Vision Analysis
       </h1>
-      <p className="text-muted-foreground mb-8">
-        Analysis ID: {id}
+      <p className="text-muted-foreground text-sm mb-8">
+        Each category is analysed simultaneously —
+        results stream in as they complete.
       </p>
-      <pre className="bg-muted p-4 rounded-lg
-          text-xs overflow-auto">
-        {JSON.stringify(analysis, null, 2)}
-      </pre>
+
+      <div className="space-y-6">
+        {categories.map(category => (
+          <Suspense
+            key={category.name}
+            fallback={
+              <CategorySkeleton
+                categoryName={category.name}
+              />
+            }
+          >
+            <CategoryAnalyser
+              analysisId={id}
+              categoryName={category.name}
+              imageUrls={category.urls}
+            />
+          </Suspense>
+        ))}
+      </div>
     </div>
   )
 }
