@@ -2,9 +2,25 @@ import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 
+// Force dynamic rendering on every request
+// Prevents Next.js from statically caching
+// user-specific analysis pages
+// Critical: without this, cross-user data
+// leakage is possible via edge/CDN caching
+export const dynamic = 'force-dynamic'
+
 // This type is required in Next.js 15 — params is a Promise
 type PageProps = {
   params: Promise<{ id: string }>
+}
+
+// UUID v4 format validator
+// Validates format BEFORE hitting the database
+// Prevents malformed requests, log pollution,
+// and potential query edge cases
+// No external library needed — pure regex
+function isValidUUID(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
 // This function runs BEFORE streaming starts
@@ -12,6 +28,13 @@ type PageProps = {
 // notFound() and redirect() here work correctly
 // because no HTML has been sent to the browser yet
 async function validateAndFetchAnalysis(id: string) {
+  // SECURITY CHECK 0 — validate UUID format first
+  // Prevents malformed IDs from hitting the database
+  // notFound() here is safe — no streaming has started
+  if (!isValidUUID(id)) {
+    notFound()
+  }
+
   const supabase = await createClient()
 
   // SECURITY CHECK 1 — verify user is authenticated
