@@ -119,7 +119,7 @@ async function AnalysisContent({ id }: { id: string }) {
   // In Task 7.5 we will split by category groups
   // This validates the parallel streaming pattern works
   const categories = [
-    { name: 'Flowers', urls: imageUrls },
+    { name: 'Flowers & Décor', urls: imageUrls },
   ]
 
   return (

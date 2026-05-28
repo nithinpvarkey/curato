@@ -18,6 +18,12 @@ export type StyleOption = {
   vendor_keywords: string[]
   avoid_keywords: string[]
   budget_items: { item: string; range: string; note: string }[]
+  vendor_brief: string
+  planner: {
+    booking_window: string
+    vendor_questions: string[]
+    action_items: string[]
+  }
 }
 
 interface StyleOptionCardProps {

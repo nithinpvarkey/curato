@@ -36,7 +36,7 @@ export default async function CategoryAnalyser({
           Could not analyse {categoryName}
         </p>
         <p className="text-xs text-muted-foreground">
-          {'Analysis failed — please try again'}
+          {result.error ?? 'Analysis failed — please try again'}
         </p>
       </div>
     )

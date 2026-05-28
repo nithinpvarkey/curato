@@ -177,6 +177,7 @@ RIGHT do_not_list item:
 that visual control is the opposite of everything you saved."
 </examples>
 
+
 <final_instruction>
 Return exactly 4 options. Make them genuinely distinct emotional directions —
 not variations of the same style with different names.
@@ -230,7 +231,7 @@ const ANALYSIS_SCHEMA = {
               required: ['item', 'range', 'note'],
               additionalProperties: false
             }
-          }
+          },
         },
         required: [
           'id',
@@ -311,7 +312,7 @@ export async function analyseCategory(params: {
 
     const textBlock = {
       type: 'text' as const,
-      text: `These are wedding inspiration images saved by a couple for their ${params.categoryName} category. Analyse the full set. What patterns repeat across multiple images? What do those repeated patterns reveal about what this couple actually wants to feel on their wedding day? Return exactly 4 style options.`
+      text: `These are wedding inspiration images saved by a couple for their ${params.categoryName} category. Analyse the full set. What patterns repeat across multiple images? What do those repeated patterns reveal about what this couple actually wants to feel on their wedding day? You MUST return exactly 4 style options — no more, no fewer. All 4 options are required.`
     }
 
     const response = await anthropic.messages.create({
@@ -328,6 +329,10 @@ export async function analyseCategory(params: {
     })
 
     // GUARD 3 — token limit hit
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Stop reason:', response.stop_reason)
+      console.log('Usage:', response.usage)
+    }
     if (response.stop_reason === 'max_tokens') {
       return { success: false, error: 'Too many images — try fewer than 15 per category' }
     }
@@ -375,9 +380,17 @@ export async function analyseCategory(params: {
     return { success: true, data: result }
 
   } catch (err) {
+    const errorMessage = err instanceof Error
+      ? err.message
+      : String(err)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('analyseCategory error:', errorMessage)
+    }
     return {
       success: false,
-      error: 'Analysis failed — please try again'
+      error: process.env.NODE_ENV === 'development'
+        ? errorMessage
+        : 'Analysis failed — please try again'
     }
   }
 }
