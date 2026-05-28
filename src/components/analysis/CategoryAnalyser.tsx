@@ -5,6 +5,8 @@
 
 import { triggerCategoryAnalysis } from '@/app/actions/triggerAnalysis'
 import type { CategoryAnalysis } from '@/types/analysis'
+import StyleOptionCards from './StyleOptionCards'
+import type { StyleOption } from './StyleOptionCard'
 
 type CategoryAnalyserProps = {
   analysisId: string
@@ -42,11 +44,9 @@ export default async function CategoryAnalyser({
 
   const data: CategoryAnalysis = result.data
 
-  // Placeholder render — shows raw data for now
-  // Will be replaced in Tasks 7.5–7.8 with full UI
   return (
     <div className="rounded-xl border bg-card p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-card-foreground">
           {data.category}
         </h3>
@@ -55,45 +55,10 @@ export default async function CategoryAnalyser({
         </span>
       </div>
 
-      <div className="space-y-2">
-        {data.options.map(option => (
-          <div
-            key={option.id}
-            className="rounded-lg bg-muted/50 p-3"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium
-                  text-foreground">
-                {option.name}
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full
-                font-medium ${
-                  option.confidence === 'high'
-                    ? 'bg-green-100 text-green-700'
-                    : option.confidence === 'medium'
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                {option.confidence}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {option.signal_evidence}
-            </p>
-            <div className="flex gap-1 mt-2">
-              {option.palette.map(color => (
-                <div
-                  key={color.hex}
-                  className="w-5 h-5 rounded-full border
-                      border-border flex-shrink-0"
-                  style={{ backgroundColor: color.hex }}
-                  title={color.name}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+      <StyleOptionCards
+        options={data.options as StyleOption[]}
+        categoryName={categoryName}
+      />
     </div>
   )
 }
