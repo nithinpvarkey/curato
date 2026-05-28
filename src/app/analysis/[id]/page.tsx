@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Suspense } from 'react'
 import CategoryAnalyser from '@/components/analysis/CategoryAnalyser'
 import CategorySkeleton from '@/components/analysis/CategorySkeleton'
+import Questionnaire from '@/components/analysis/Questionnaire'
 
 // Force dynamic rendering on every request
 // Prevents Next.js from statically caching
@@ -109,7 +110,7 @@ function AnalysisSkeleton() {
 // Wrapped in Suspense inside the page
 // Streaming happens HERE — after auth is validated
 async function AnalysisContent({ id }: { id: string }) {
-  const { analysis } = await validateAndFetchAnalysis(id)
+  const { analysis, user } = await validateAndFetchAnalysis(id)
 
   // Parse image_urls from the analysis row
   // This is the array of Cloudinary URLs stored in Supabase
@@ -131,6 +132,11 @@ async function AnalysisContent({ id }: { id: string }) {
         Each category is analysed simultaneously —
         results stream in as they complete.
       </p>
+
+      <Questionnaire
+        analysisId={analysis.id}
+        userId={user.id}
+      />
 
       <div className="space-y-6">
         {categories.map(category => (
