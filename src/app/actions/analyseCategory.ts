@@ -75,6 +75,16 @@ LENGTH CONSTRAINTS — STRICTLY ENFORCED
 - why_your_style: maximum 60 words. No exceptions.
 - signal_evidence: exactly 1 sentence stating the count and pattern observed. Example: "11 of 14 images showed loose, spilling arrangements — zero showed structured upright bouquets."
 - do_not_list items: maximum 15 words each. Specific and vendor-actionable only.
+- vendor_brief: maximum 60 words. First person plural ("We are looking for..."). Names one specific image pattern observed. States what they want AND what they do not want explicitly. No greetings. No generic language. No Pinterest vocabulary.
+- planner.booking_window: maximum 10 words. Category-specific timing. Real US market booking windows only.
+- planner.questions_to_ask: exactly 3 questions. Maximum 15 words each. Specific to this style option — not generic wedding questions.
+- planner.coordination_checklist: exactly 3 items. Maximum 12 words each. Imperative format. Concrete and immediately actionable.
+- budget_reality_range: one string. Format exactly as "$X,000–$Y,000 for a [guest count]-person [category]". Real 2025 US market rates only.
+- cost_drivers: exactly 3 strings. Maximum 12 words each. Explains WHY this style costs what it costs. Specific to this option's patterns.
+- budget_surprises: exactly 3 strings. Maximum 15 words each. Real hidden costs couples discover after booking. Specific to this style.
+- savings_opportunities: exactly 2 objects. Each has expensive_element (what costs most), lower_cost_alternative (specific substitute), estimated_saving (format "$X,000–$Y,000"), atmosphere_impact (how much feeling is lost: 'low', 'medium', or 'high').
+- atmosphere_protection.protect_first: exactly 3 strings. Maximum 8 words each. Elements that CREATE the emotional atmosphere of this style. What must survive budget cuts.
+- atmosphere_protection.reduce_first: exactly 3 strings. Maximum 8 words each. Elements that CREATE the aesthetic look but not the feeling. What can be reduced without losing atmosphere.
 - Prefer concrete observable specificity over metaphor or poetic language.
 - If you find yourself writing a beautiful sentence — stop. Rewrite it as a specific observation.
 
@@ -216,9 +226,18 @@ const ANALYSIS_SCHEMA = {
               additionalProperties: false
             }
           },
-          do_not_list: { type: 'array', items: { type: 'string' } },
-          vendor_keywords: { type: 'array', items: { type: 'string' } },
-          avoid_keywords: { type: 'array', items: { type: 'string' } },
+          do_not_list: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          vendor_keywords: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          avoid_keywords: {
+            type: 'array',
+            items: { type: 'string' }
+          },
           budget_items: {
             type: 'array',
             items: {
@@ -232,6 +251,79 @@ const ANALYSIS_SCHEMA = {
               additionalProperties: false
             }
           },
+          vendor_brief: { type: 'string' },
+          planner: {
+            type: 'object',
+            properties: {
+              booking_window: { type: 'string' },
+              questions_to_ask: {
+                type: 'array',
+                items: { type: 'string' }
+              },
+              coordination_checklist: {
+                type: 'array',
+                items: { type: 'string' }
+              }
+            },
+            required: [
+              'booking_window',
+              'questions_to_ask',
+              'coordination_checklist'
+            ],
+            additionalProperties: false
+          },
+          budget_reality_range: { type: 'string' },
+          cost_drivers: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          budget_surprises: {
+            type: 'array',
+            items: { type: 'string' }
+          },
+          savings_opportunities: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                expensive_element: {
+                  type: 'string'
+                },
+                lower_cost_alternative: {
+                  type: 'string'
+                },
+                estimated_saving: {
+                  type: 'string'
+                },
+                atmosphere_impact: {
+                  type: 'string',
+                  enum: ['low', 'medium', 'high']
+                }
+              },
+              required: [
+                'expensive_element',
+                'lower_cost_alternative',
+                'estimated_saving',
+                'atmosphere_impact'
+              ],
+              additionalProperties: false
+            }
+          },
+          atmosphere_protection: {
+            type: 'object',
+            properties: {
+              protect_first: {
+                type: 'array',
+                items: { type: 'string' }
+              },
+              reduce_first: {
+                type: 'array',
+                items: { type: 'string' }
+              }
+            },
+            required: ['protect_first', 'reduce_first'],
+            additionalProperties: false
+          }
         },
         required: [
           'id',
@@ -244,7 +336,14 @@ const ANALYSIS_SCHEMA = {
           'do_not_list',
           'vendor_keywords',
           'avoid_keywords',
-          'budget_items'
+          'budget_items',
+          'vendor_brief',
+          'planner',
+          'budget_reality_range',
+          'cost_drivers',
+          'budget_surprises',
+          'savings_opportunities',
+          'atmosphere_protection'
         ],
         additionalProperties: false
       }
@@ -317,7 +416,7 @@ export async function analyseCategory(params: {
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      max_tokens: 8000,
       system: ANALYSIS_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: [...imageBlocks, textBlock] }],
       output_config: {

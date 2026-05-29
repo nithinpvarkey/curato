@@ -17,12 +17,29 @@ export type StyleOption = {
   do_not_list: string[]
   vendor_keywords: string[]
   avoid_keywords: string[]
-  budget_items: { item: string; range: string; note: string }[]
+  budget_items: {
+    item: string
+    range: string
+    note: string
+  }[]
   vendor_brief: string
   planner: {
     booking_window: string
-    vendor_questions: string[]
-    action_items: string[]
+    questions_to_ask: string[]
+    coordination_checklist: string[]
+  }
+  budget_reality_range: string
+  cost_drivers: string[]
+  budget_surprises: string[]
+  savings_opportunities: {
+    expensive_element: string
+    lower_cost_alternative: string
+    estimated_saving: string
+    atmosphere_impact: 'low' | 'medium' | 'high'
+  }[]
+  atmosphere_protection: {
+    protect_first: string[]
+    reduce_first: string[]
   }
 }
 
