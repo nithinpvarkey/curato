@@ -21,6 +21,7 @@ import {
   buildPaletteGradient,
 } from '@/lib/colour-utils'
 import type { StyleOption } from './StyleOptionCard'
+import StyleOptionTabs from './StyleOptionTabs'
 
 interface StyleOptionCardsProps {
   options: StyleOption[]
@@ -102,6 +103,14 @@ export default function StyleOptionCards({
           />
         ))}
       </div>
+
+      {/* ── SUB-TABS ── */}
+      {selectedOption && (
+        <StyleOptionTabs
+          option={selectedOption}
+          accentHex={bannerAccent}
+        />
+      )}
 
       {/* ── RESPONSIVE POPUP ── */}
       {options.map((option) => {
