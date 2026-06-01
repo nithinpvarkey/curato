@@ -66,6 +66,37 @@ export async function triggerCategoryAnalysis(params: {
     return { success: false, error: 'Invalid image URLs' }
   }
 
+  // CACHE CHECK — if results already exist
+  // for this category, return them immediately
+  // Prevents unnecessary API calls on every
+  // page load and saves API credits
+  const categoryKey = params.categoryName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+
+  const { data: existingAnalysis } =
+    await supabase
+      .from('analyses')
+      .select('category_results')
+      .eq('id', params.analysisId)
+      .eq('user_id', user.id)
+      .single()
+
+  if (
+    existingAnalysis?.category_results?.[categoryKey]
+      ?.options?.length > 0
+  ) {
+    return {
+      success: true,
+      data: existingAnalysis!
+        .category_results[categoryKey]
+    }
+  }
+
+  // No cached result — proceed with API call
+
   // OPTIMISE — resize images before sending to Claude
   // Inserts w_800,c_limit,q_auto into Cloudinary URL
   // Reduces vision tokens by ~83% — faster and cheaper

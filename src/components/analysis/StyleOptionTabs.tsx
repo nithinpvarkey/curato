@@ -75,7 +75,7 @@ export default function StyleOptionTabs({
               value="keywords"
               className="flex-1"
             >
-              Keywords
+              Search
             </TabsTrigger>
             <TabsTrigger
               value="budget"
@@ -88,12 +88,17 @@ export default function StyleOptionTabs({
 
         {/* ── BRIEF TAB ── */}
         <TabsContent value="brief">
-          <div className="bg-[#FDFAF7] rounded-2xl
-          border border-border/40 p-6 space-y-4">
+          <div
+            className="bg-[#FDFAF7] rounded-2xl
+            border-2 p-6 space-y-4"
+            style={{ borderColor: accentHex }}
+          >
             <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
+              <p
+                className="text-[10px] font-semibold
+                uppercase tracking-widest mb-3"
+                style={{ color: accentHex }}
+              >
                 Send this to your vendor
               </p>
               <p className="text-sm text-foreground/80
@@ -244,7 +249,7 @@ export default function StyleOptionTabs({
               <p className="text-[10px] font-semibold
               uppercase tracking-widest
               text-muted-foreground/60 mb-3">
-                Search these
+                Search for vendors using
               </p>
               <div className="flex flex-wrap gap-2">
                 {option.vendor_keywords.map(
@@ -275,7 +280,7 @@ export default function StyleOptionTabs({
               <p className="text-[10px] font-semibold
               uppercase tracking-widest
               text-muted-foreground/60 mb-3">
-                Avoid these
+                Don't search these
               </p>
               <div className="flex flex-wrap gap-2">
                 {option.avoid_keywords.map(

@@ -18,7 +18,6 @@ import StyleOptionCardCompact from './StyleOptionCardCompact'
 import StyleOptionCardFull from './StyleOptionCardFull'
 import {
   getBestButtonColour,
-  buildPaletteGradient,
 } from '@/lib/colour-utils'
 import type { StyleOption } from './StyleOptionCard'
 import StyleOptionTabs from './StyleOptionTabs'
@@ -44,10 +43,6 @@ export default function StyleOptionCards({
     ? getBestButtonColour(selectedOption.palette)
     : '#b8a99a'
 
-  const paletteGradient = selectedOption
-    ? buildPaletteGradient(selectedOption.palette)
-    : ''
-
   const handleSelect = (id: number) => {
     setSelectedId(prev => prev === id ? null : id)
     setOpenId(null)
@@ -57,40 +52,6 @@ export default function StyleOptionCards({
 
   return (
     <div className="space-y-4">
-
-      {/* ── CHOSEN BANNER ── */}
-      {selectedOption && (
-        <div
-          className="rounded-2xl border-2 overflow-hidden animate-in slide-in-from-top-2 duration-300"
-          style={{ borderColor: bannerAccent }}
-        >
-          <div
-            className="h-10 w-full"
-            style={{ background: paletteGradient }}
-          />
-          <div
-            className="px-5 py-4"
-            style={{ backgroundColor: `${bannerAccent}12` }}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                  Your chosen direction
-                </p>
-                <p className="text-base font-semibold text-foreground leading-snug">
-                  {selectedOption.name}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedId(null)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap mt-1 underline-offset-2 hover:underline flex-shrink-0"
-              >
-                Change selection →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── 2×2 GRID ── */}
       <div className="grid grid-cols-2 gap-4">
@@ -104,12 +65,70 @@ export default function StyleOptionCards({
         ))}
       </div>
 
-      {/* ── SUB-TABS ── */}
+      {/* ── POST-SELECTION SECTION ── */}
       {selectedOption && (
-        <StyleOptionTabs
-          option={selectedOption}
-          accentHex={bannerAccent}
-        />
+        <div className="animate-in
+        slide-in-from-top-2 fade-in duration-300
+        mt-6 rounded-2xl border border-border/50
+        bg-[#FDFAF7] overflow-hidden">
+
+          {/* Chosen banner row */}
+          <div className="flex items-start
+          justify-between gap-3 px-5 pt-5 mb-3">
+            <div>
+              <p className="text-sm font-semibold
+              text-foreground leading-snug">
+                🌸 Your Flowers Direction
+              </p>
+              <p className="text-xs mt-0.5"
+                style={{ color: '#4A7A4A' }}>
+                All briefs below are based on
+                this choice
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedId(null)}
+              className="flex-shrink-0 px-3 py-1.5
+              rounded-full border border-border
+              text-xs text-muted-foreground
+              hover:text-foreground
+              hover:border-foreground/40
+              transition-colors whitespace-nowrap
+              mt-0.5"
+            >
+              Change style
+            </button>
+          </div>
+
+          {/* Full-width palette strip with
+              colour names inside each bar */}
+          <div className="flex w-full gap-0.5
+          mb-0">
+            {selectedOption.palette
+              .slice(0, 5)
+              .map((color) => {
+                return (
+                  <div
+                    key={color.hex}
+                    className="flex-1 h-10"
+                    style={{
+                      backgroundColor: color.hex
+                    }}
+                    title={color.name}
+                  />
+                )
+              })
+            }
+          </div>
+
+          <div className="px-5 pb-5 pt-4">
+            <StyleOptionTabs
+              option={selectedOption}
+              accentHex={bannerAccent}
+            />
+          </div>
+
+        </div>
       )}
 
       {/* ── RESPONSIVE POPUP ── */}
@@ -178,18 +197,6 @@ export default function StyleOptionCards({
         )
       })}
 
-      {/* ── FLOATING INDICATOR ── */}
-      {selectedOption && openId === null && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg border border-border/50 bg-background/95 backdrop-blur-sm animate-in slide-in-from-bottom-2 duration-300 pointer-events-none">
-          <div
-            className="w-3 h-3 rounded-full flex-shrink-0"
-            style={{ backgroundColor: bannerAccent }}
-          />
-          <span className="text-xs font-medium text-foreground whitespace-nowrap">
-            {selectedOption.name}
-          </span>
-        </div>
-      )}
 
     </div>
   )

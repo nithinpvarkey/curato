@@ -60,15 +60,16 @@ export default function StyleOptionCardCompact({
           {option.name}
         </h3>
 
-        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+        <p className="text-xs text-muted-foreground leading-relaxed line-clamp-1">
           {option.behavioral_description}
         </p>
 
-        <div className="flex gap-1.5 flex-wrap">
+        {/* Palette strip — full width bars, no labels */}
+        <div className="flex w-full gap-0.5 mt-1">
           {option.palette.slice(0, 5).map((color) => (
             <div
               key={color.hex}
-              className="w-4 h-4 rounded-full border border-border/40 flex-shrink-0"
+              className="h-4 flex-1 rounded-md"
               style={{ backgroundColor: color.hex }}
               title={color.name}
             />
