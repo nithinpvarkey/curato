@@ -58,6 +58,7 @@ export default async function CategoryAnalyser({
       <StyleOptionCards
         options={data.options as StyleOption[]}
         categoryName={categoryName}
+        analysisId={analysisId}
       />
     </div>
   )

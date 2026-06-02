@@ -21,19 +21,41 @@ import {
 } from '@/lib/colour-utils'
 import type { StyleOption } from './StyleOptionCard'
 import StyleOptionTabs from './StyleOptionTabs'
+import { personaliseCategory } from
+  '@/app/actions/personaliseCategory'
+import { createClient } from
+  '@/lib/supabase/client'
+import type {
+  QuizAnswers,
+  PersonalisedResult
+} from '@/types/analysis'
 
 interface StyleOptionCardsProps {
   options: StyleOption[]
   categoryName: string
+  analysisId: string
 }
 
 export default function StyleOptionCards({
   options,
-  categoryName: _categoryName,
+  categoryName,
+  analysisId,
 }: StyleOptionCardsProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [openId, setOpenId] = useState<number | null>(null)
   const isDesktop = useIsDesktop()
+
+  const [quizAnswers, setQuizAnswers] =
+    useState<QuizAnswers>({
+      wedding_month: null,
+      wedding_year: null,
+      guest_count: null,
+      budget_range: null,
+    })
+  const [personalisedResult, setPersonalisedResult] =
+    useState<PersonalisedResult | null>(null)
+  const [isPersonalising, setIsPersonalising] =
+    useState(false)
 
   const selectedOption = selectedId !== null
     ? options.find(o => o.id === selectedId) ?? null
@@ -43,12 +65,67 @@ export default function StyleOptionCards({
     ? getBestButtonColour(selectedOption.palette)
     : '#b8a99a'
 
-  const handleSelect = (id: number) => {
-    setSelectedId(prev => prev === id ? null : id)
-    setOpenId(null)
+  const handleClose = () => setOpenId(null)
+
+  const fetchAndPersonalise = async (
+    option: StyleOption
+  ) => {
+    setIsPersonalising(true)
+    setPersonalisedResult(null)
+    try {
+      const supabase = createClient()
+      const { data: quizData } = await supabase
+        .from('quiz_responses')
+        .select('answers')
+        .eq('analysis_id', analysisId)
+        .eq('respondent', 'partner_a')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      const answers: QuizAnswers =
+        (quizData?.answers as QuizAnswers) ?? {
+          wedding_month: null,
+          wedding_year: null,
+          guest_count: null,
+          budget_range: null,
+        }
+      setQuizAnswers(answers)
+
+      const result = await personaliseCategory({
+        analysisId,
+        optionId: option.id,
+        categoryName,
+        option,
+        quizAnswers: answers,
+      })
+      if (result.success && result.data) {
+        setPersonalisedResult(result.data)
+      }
+    } catch {
+      // Silent fail — tabs still show generic data
+    } finally {
+      setIsPersonalising(false)
+    }
   }
 
-  const handleClose = () => setOpenId(null)
+  const handleSelect = (id: number) => {
+    const newId = selectedId === id ? null : id
+    setSelectedId(newId)
+    setOpenId(null)
+    if (newId !== null) {
+      const selected = options.find(o => o.id === newId)
+      if (selected) fetchAndPersonalise(selected)
+    } else {
+      setPersonalisedResult(null)
+      setQuizAnswers({
+        wedding_month: null,
+        wedding_year: null,
+        guest_count: null,
+        budget_range: null,
+      })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -125,6 +202,14 @@ export default function StyleOptionCards({
             <StyleOptionTabs
               option={selectedOption}
               accentHex={bannerAccent}
+              quizAnswers={quizAnswers}
+              personalisedResult={personalisedResult}
+              isPersonalising={isPersonalising}
+              categoryKey={categoryName
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g,'_')
+                .replace(/_+/g,'_')
+                .replace(/^_|_$/g,'')}
             />
           </div>
 

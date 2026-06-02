@@ -32,11 +32,11 @@ export default function Questionnaire({
         'budget ranges.',
       type: 'tap_options',
       options: [
-        'Under 50',
+        'Under 20',
+        '20–50',
         '50–100',
         '100–150',
-        '150–200',
-        '200+',
+        '150+',
       ],
     },
     {
@@ -46,11 +46,12 @@ export default function Questionnaire({
         'no judgement.',
       type: 'tap_options',
       options: [
-        'Under $20k',
-        '$20k–$40k',
-        '$40k–$60k',
-        '$60k–$80k',
-        '$80k+',
+        'Under $5k',
+        '$5k–$10k',
+        '$10k–$15k',
+        '$15k–$25k',
+        '$25k–$40k',
+        '$40k+',
       ],
     },
   ]

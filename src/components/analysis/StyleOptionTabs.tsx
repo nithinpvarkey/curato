@@ -9,17 +9,96 @@ import {
 } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import type { StyleOption } from './StyleOptionCard'
+import type {
+  QuizAnswers,
+  PersonalisedResult
+} from '@/types/analysis'
+import {
+  parseBudgetRange,
+  getCategoryBudgetAllocation,
+  getBookingStatus
+} from '@/lib/budget-utils'
 
 interface StyleOptionTabsProps {
   option: StyleOption
   accentHex: string
+  quizAnswers: QuizAnswers
+  personalisedResult: PersonalisedResult | null
+  isPersonalising: boolean
+  categoryKey: string
+}
+
+function getBudgetFitLabel(
+  score: 'full' | 'partial' | 'stretch',
+  percentage: string
+): {
+  emoji: string
+  label: string
+  colour: string
+  reasoning: string
+} {
+  const pct = percentage.split('–')[0]
+  switch (score) {
+    case 'full':
+      return {
+        emoji: '🟢',
+        label: 'Strong Fit',
+        colour: '#15803d',
+        reasoning: `This style requires roughly
+${pct}% of your total budget — within a
+healthy range. You can achieve the full
+atmosphere without major compromises.`
+      }
+    case 'partial':
+      return {
+        emoji: '🟡',
+        label: 'Moderate Fit',
+        colour: '#a16207',
+        reasoning: `This style requires roughly
+${pct}% of your total budget. Some
+adjustments are needed — see the priority
+guide below to protect what matters most.`
+      }
+    case 'stretch':
+      return {
+        emoji: '🔴',
+        label: 'Stretch Budget',
+        colour: '#dc2626',
+        reasoning: `This style typically costs
+more than your category allocation. Focus
+on must-protect elements and use the
+savings opportunities below to get as
+close as possible.`
+      }
+  }
 }
 
 export default function StyleOptionTabs({
   option,
   accentHex,
+  quizAnswers,
+  personalisedResult,
+  isPersonalising,
+  categoryKey,
 }: StyleOptionTabsProps) {
   const [copied, setCopied] = useState(false)
+
+  const totalBudget = parseBudgetRange(
+    quizAnswers.budget_range
+  )
+  const allocation = getCategoryBudgetAllocation(
+    totalBudget, categoryKey
+  )
+  const hasQuizData = !!(
+    quizAnswers.budget_range ||
+    quizAnswers.guest_count
+  )
+
+  const bookingStatus = getBookingStatus(
+    option.planner.booking_window,
+    quizAnswers.wedding_month,
+    quizAnswers.wedding_year
+  )
 
   const handleCopy = async () => {
     try {
@@ -166,10 +245,27 @@ export default function StyleOptionTabs({
               text-muted-foreground/60 mb-2">
                 Book by
               </p>
-              <p className="text-sm font-medium
-              text-foreground leading-snug">
-                {option.planner.booking_window}
-              </p>
+              <div>
+                <p className="text-sm font-medium
+                text-foreground leading-snug">
+                  {bookingStatus?.genericText ??
+                    option.planner.booking_window}
+                </p>
+                {bookingStatus?.calculatedMessage && (
+                  <p className={`text-sm mt-1
+                  leading-relaxed
+                  ${bookingStatus.urgency === 'emergency' ||
+                    bookingStatus.urgency === 'overdue'
+                    ? 'text-destructive/80 font-medium'
+                    : bookingStatus.urgency === 'soon' ||
+                      bookingStatus.urgency === 'urgent'
+                    ? 'text-amber-600'
+                    : 'text-muted-foreground'
+                  }`}>
+                    ({bookingStatus.calculatedMessage})
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="border-t
@@ -325,41 +421,281 @@ export default function StyleOptionTabs({
                 text-foreground mb-1">
                   Budget Reality Check
                 </p>
-                <p className="text-sm
-                text-foreground/80 leading-relaxed">
-                  Your selected direction typically
-                  requires{' '}
-                  <span className="font-semibold">
-                    {option.budget_reality_range}
-                  </span>
-                </p>
+                {personalisedResult &&
+                 !isPersonalising ? (
+                  <p className="text-sm
+                  text-foreground/80 leading-relaxed">
+                    {personalisedResult
+                      .budget_gap_summary}
+                  </p>
+                ) : (
+                  <p className="text-sm
+                  text-foreground/80 leading-relaxed">
+                    Your selected direction
+                    typically requires{' '}
+                    <span className="font-semibold">
+                      {option.budget_reality_range}
+                    </span>
+                    {isPersonalising && (
+                      <span className="text-xs
+                      text-muted-foreground
+                      ml-2 animate-pulse">
+                        Personalising...
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
 
+            {/* YOUR BUDGET FIT */}
+            {hasQuizData && (
+              <div className="rounded-xl border
+              border-border/40 overflow-hidden">
+                <div className="px-4 py-3
+                border-b border-border/30
+                bg-muted/20">
+                  <p className="text-[10px]
+                  font-semibold uppercase
+                  tracking-widest
+                  text-muted-foreground/60">
+                    Your budget fit
+                  </p>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center
+                  justify-between">
+                    <span className="text-xs
+                    text-muted-foreground">
+                      Total wedding budget
+                    </span>
+                    <span className="text-xs
+                    font-semibold text-foreground">
+                      {quizAnswers.budget_range ??
+                        'Not set'}
+                    </span>
+                  </div>
+                  <div className="flex items-center
+                  justify-between">
+                    <span className="text-xs
+                    text-muted-foreground">
+                      Realistic for this category
+                    </span>
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: accentHex }}
+                    >
+                      {allocation.formatted}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="h-1.5
+                    bg-muted/40 rounded-full
+                    overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          backgroundColor: accentHex,
+                          width: `${allocation
+                            .percentage
+                            .split('–')[0]}%`
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px]
+                    text-muted-foreground">
+                      {allocation.percentage} of
+                      your total budget
+                    </p>
+                  </div>
+
+                  {personalisedResult &&
+                   !isPersonalising && (() => {
+                    const fit = getBudgetFitLabel(
+                      personalisedResult
+                        .achievability_score,
+                      allocation.percentage
+                    )
+                    return (
+                      <div className="pt-2
+                      border-t border-border/30
+                      flex items-start gap-2">
+                        <span className="text-base
+                        flex-shrink-0 leading-none
+                        mt-0.5">
+                          {fit.emoji}
+                        </span>
+                        <div>
+                          <p
+                            className="text-xs
+                            font-semibold mb-0.5"
+                            style={{ color: fit.colour }}
+                          >
+                            {fit.label}
+                          </p>
+                          <p className="text-xs
+                          text-muted-foreground
+                          leading-relaxed">
+                            {fit.reasoning}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* CURATO ADVICE */}
+            {personalisedResult?.curato_advice &&
+             !isPersonalising && (
+              <div
+                className="rounded-xl p-4
+                border border-border/40"
+                style={{
+                  backgroundColor: `${accentHex}08`
+                }}
+              >
+                <p
+                  className="text-[10px]
+                  font-semibold uppercase
+                  tracking-widest mb-2"
+                  style={{ color: accentHex }}
+                >
+                  What we&apos;d do in your situation
+                </p>
+                <p className="text-sm
+                text-foreground/80 leading-relaxed">
+                  {personalisedResult.curato_advice}
+                </p>
+              </div>
+            )}
+
+            {/* IF THIS WERE MY BUDGET */}
+            {personalisedResult &&
+             !isPersonalising && (
+              <div>
+                <p className="text-[10px]
+                font-semibold uppercase
+                tracking-widest
+                text-muted-foreground/60 mb-3">
+                  If this were my budget
+                </p>
+                <div className="space-y-2.5">
+                  {[
+                    ...option.atmosphere_protection
+                      .protect_first
+                      .slice(0, 2)
+                      .map((item, i) => ({
+                        priority: i + 1,
+                        text: `Protect ${item}`,
+                        isProtect: true
+                      })),
+                    ...personalisedResult
+                      .top_priority_cuts
+                      .slice(0, 2)
+                      .map((cut, i) => ({
+                        priority: i + 3,
+                        text: `Cut ${
+                          cut.cut_this
+                        } — use ${
+                          cut.keep_this
+                        } instead`,
+                        isProtect: false
+                      }))
+                  ].map((item) => (
+                    <div
+                      key={item.priority}
+                      className="flex items-start
+                      gap-3 text-sm
+                      text-foreground/80
+                      leading-relaxed"
+                    >
+                      <span
+                        className="text-[10px]
+                        font-bold flex-shrink-0
+                        mt-0.5 w-5 h-5 rounded-full
+                        flex items-center
+                        justify-center text-white"
+                        style={{
+                          backgroundColor:
+                            item.isProtect
+                              ? accentHex
+                              : '#9ca3af'
+                        }}
+                      >
+                        {item.priority}
+                      </span>
+                      {item.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="border-t
+            border-border/30" />
+
             {/* Cost breakdown table */}
             <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Cost breakdown
-              </p>
+              <div className="flex items-center
+              justify-between mb-3">
+                <p className="text-[10px]
+                font-semibold uppercase
+                tracking-widest
+                text-muted-foreground/60">
+                  Cost breakdown
+                </p>
+                {isPersonalising && (
+                  <p className="text-[10px]
+                  text-muted-foreground
+                  animate-pulse">
+                    Personalising...
+                  </p>
+                )}
+                {personalisedResult &&
+                 !isPersonalising && (
+                  <p
+                    className="text-[10px]
+                    font-medium"
+                    style={{ color: accentHex }}
+                  >
+                    ✓ Personalised for you
+                  </p>
+                )}
+              </div>
               <div className="divide-y
               divide-border/30">
-                {option.budget_items.map(
-                  (item, i) => (
+                {(
+                  personalisedResult
+                    ?.personalised_budget_items ??
+                  option.budget_items.map(b => ({
+                    item: b.item,
+                    adjusted_range: b.range,
+                    achievable: true,
+                    note: b.note,
+                  }))
+                ).map((item, i) => (
                   <div key={i} className="py-3
                   first:pt-0 last:pb-0">
                     <div className="flex items-start
                     justify-between gap-4">
-                      <span className="text-sm
-                      text-foreground/80
-                      leading-snug">
+                      <span className={`text-sm
+                      leading-snug ${
+                        !item.achievable
+                          ? 'text-muted-foreground/50 line-through'
+                          : 'text-foreground/80'
+                      }`}>
                         {item.item}
                       </span>
-                      <span className="text-sm
-                      font-semibold text-foreground
-                      flex-shrink-0 tabular-nums">
-                        {item.range}
+                      <span className={`text-sm
+                      font-semibold flex-shrink-0
+                      tabular-nums ${
+                        !item.achievable
+                          ? 'text-muted-foreground/50'
+                          : 'text-foreground'
+                      }`}>
+                        {item.adjusted_range}
                       </span>
                     </div>
                     {item.note && (
@@ -436,6 +772,76 @@ export default function StyleOptionTabs({
                   </li>
                 ))}
               </ul>
+            </div>
+
+            <div className="border-t
+            border-border/30" />
+
+            {/* MUST PROTECT / REDUCE FIRST */}
+            <div className="rounded-xl border
+            border-border/40 overflow-hidden">
+              <div className="grid grid-cols-2
+              divide-x divide-border/40">
+                <div className="p-4">
+                  <p
+                    className="text-[10px]
+                    font-semibold uppercase
+                    tracking-widest mb-3"
+                    style={{ color: accentHex }}
+                  >
+                    Protect first
+                  </p>
+                  <ul className="space-y-2">
+                    {option.atmosphere_protection
+                      .protect_first
+                      .map((item, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start
+                        gap-2 text-xs
+                        text-foreground/80
+                        leading-snug"
+                      >
+                        <span
+                          className="flex-shrink-0
+                          mt-0.5 font-bold text-xs"
+                          style={{ color: accentHex }}
+                        >
+                          ✓
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-4">
+                  <p className="text-[10px]
+                  font-semibold uppercase
+                  tracking-widest
+                  text-muted-foreground/60 mb-3">
+                    Reduce first
+                  </p>
+                  <ul className="space-y-2">
+                    {option.atmosphere_protection
+                      .reduce_first
+                      .map((item, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start
+                        gap-2 text-xs
+                        text-muted-foreground/70
+                        leading-snug"
+                      >
+                        <span className="flex-shrink-0
+                        mt-0.5 text-xs">
+                          •
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <div className="border-t
