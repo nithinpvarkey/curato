@@ -81,7 +81,12 @@ export default function StyleOptionTabs({
   isPersonalising,
   categoryKey,
 }: StyleOptionTabsProps) {
-  const [copied, setCopied] = useState(false)
+  const [copiedInquiry, setCopiedInquiry] =
+    useState(false)
+  const [copiedVision, setCopiedVision] =
+    useState(false)
+  const [copiedBoth, setCopiedBoth] =
+    useState(false)
 
   const totalBudget = parseBudgetRange(
     quizAnswers.budget_range
@@ -100,13 +105,69 @@ export default function StyleOptionTabs({
     quizAnswers.wedding_year
   )
 
-  const handleCopy = async () => {
+  const resolvedInquiry =
+    option.vendor_brief.inquiry
+      .replace(
+        '[WEDDING_DATE]',
+        quizAnswers.wedding_month &&
+        quizAnswers.wedding_year
+          ? `${quizAnswers.wedding_month} ${quizAnswers.wedding_year}`
+          : 'our wedding date'
+      )
+      .replace(
+        '[CATEGORY_VENDOR]',
+        categoryKey === 'flowers_d_cor'
+          ? 'florist'
+          : categoryKey === 'venue_atmosphere'
+          ? 'venue'
+          : categoryKey === 'photography_lighting'
+          ? 'photographer'
+          : categoryKey === 'attire_styling'
+          ? 'stylist'
+          : 'vendor'
+      )
+
+  const handleCopyInquiry = async () => {
     try {
       await navigator.clipboard.writeText(
-        option.vendor_brief
+        resolvedInquiry
       )
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedInquiry(true)
+      setTimeout(
+        () => setCopiedInquiry(false), 2000
+      )
+    } catch {
+      // Silent fail
+    }
+  }
+
+  const handleCopyVision = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        option.vendor_brief.vision
+      )
+      setCopiedVision(true)
+      setTimeout(
+        () => setCopiedVision(false), 2000
+      )
+    } catch {
+      // Silent fail
+    }
+  }
+
+  const handleCopyBoth = async () => {
+    try {
+      const combined =
+        option.vendor_brief.inquiry +
+        '\n\n---\n\n' +
+        option.vendor_brief.vision
+      await navigator.clipboard.writeText(
+        combined
+      )
+      setCopiedBoth(true)
+      setTimeout(
+        () => setCopiedBoth(false), 2000
+      )
     } catch {
       // Silent fail
     }
@@ -136,7 +197,7 @@ export default function StyleOptionTabs({
               value="brief"
               className="flex-1"
             >
-              Brief
+              Vision
             </TabsTrigger>
             <TabsTrigger
               value="donts"
@@ -165,40 +226,108 @@ export default function StyleOptionTabs({
           </TabsList>
         </div>
 
-        {/* ── BRIEF TAB ── */}
+        {/* ── VISION TAB ── */}
         <TabsContent value="brief">
-          <div
-            className="bg-[#FDFAF7] rounded-2xl
-            border-2 p-6 space-y-4"
-            style={{ borderColor: accentHex }}
-          >
-            <div>
-              <p
-                className="text-[10px] font-semibold
-                uppercase tracking-widest mb-3"
-                style={{ color: accentHex }}
+          <div className="space-y-4">
+
+            {/* FOR YOUR FIRST MESSAGE */}
+            <div
+              className="rounded-2xl border-2
+              p-6 space-y-4"
+              style={{ borderColor: accentHex }}
+            >
+              <div className="space-y-1">
+                <p
+                  className="text-[10px]
+                  font-semibold uppercase
+                  tracking-widest"
+                  style={{ color: accentHex }}
+                >
+                  For your first message
+                </p>
+                <p className="text-xs
+                text-muted-foreground
+                leading-relaxed">
+                  Send this when you first
+                  reach out — before you've met.
+                </p>
+              </div>
+              <p className="text-sm
+              text-foreground/80 leading-relaxed">
+                {resolvedInquiry}
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-11 text-sm
+                transition-all duration-200"
+                onClick={handleCopyInquiry}
+                style={copiedInquiry ? {
+                  borderColor: accentHex,
+                  color: accentHex,
+                } : undefined}
               >
-                Send this to your vendor
-              </p>
-              <p className="text-sm text-foreground/80
-              leading-relaxed">
-                {option.vendor_brief}
-              </p>
+                {copiedInquiry
+                  ? '✓ Copied'
+                  : 'Copy inquiry message'}
+              </Button>
             </div>
+
+            {/* FOR YOUR CONSULTATION */}
+            <div className="rounded-2xl border
+            border-border/40 bg-[#FDFAF7]
+            p-6 space-y-4">
+              <div className="space-y-1">
+                <p className="text-[10px]
+                font-semibold uppercase
+                tracking-widest
+                text-muted-foreground/60">
+                  For your consultation
+                </p>
+                <p className="text-xs
+                text-muted-foreground
+                leading-relaxed">
+                  Share this after you've
+                  booked — at your first
+                  creative meeting.
+                </p>
+              </div>
+              <p className="text-sm
+              text-foreground/80 leading-relaxed">
+                {option.vendor_brief.vision}
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-11 text-sm
+                transition-all duration-200"
+                onClick={handleCopyVision}
+                style={copiedVision ? {
+                  borderColor: accentHex,
+                  color: accentHex,
+                } : undefined}
+              >
+                {copiedVision
+                  ? '✓ Copied'
+                  : 'Copy vision brief'}
+              </Button>
+            </div>
+
+            {/* COPY BOTH */}
             <Button
-              variant="outline"
-              className="w-full h-11 text-sm
+              variant="ghost"
+              className="w-full h-9 text-xs
+              text-muted-foreground
+              hover:text-foreground
               transition-all duration-200"
-              onClick={handleCopy}
-              style={copied ? {
-                borderColor: accentHex,
+              onClick={handleCopyBoth}
+              style={copiedBoth ? {
                 color: accentHex,
               } : undefined}
             >
-              {copied
-                ? '✓ Copied to clipboard'
-                : 'Copy to clipboard'}
+              {copiedBoth
+                ? '✓ Both copied'
+                : 'Copy both together'}
             </Button>
+
           </div>
         </TabsContent>
 

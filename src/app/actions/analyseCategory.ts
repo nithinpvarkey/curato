@@ -75,7 +75,26 @@ LENGTH CONSTRAINTS — STRICTLY ENFORCED
 - why_your_style: maximum 60 words. No exceptions.
 - signal_evidence: exactly 1 sentence stating the count and pattern observed. Example: "11 of 14 images showed loose, spilling arrangements — zero showed structured upright bouquets."
 - do_not_list items: maximum 15 words each. Specific and vendor-actionable only.
-- vendor_brief: maximum 60 words. First person plural ("We are looking for..."). Names one specific image pattern observed. States what they want AND what they do not want explicitly. No greetings. No generic language. No Pinterest vocabulary.
+- vendor_brief has two fields:
+
+  vendor_brief.inquiry: maximum 55 words. This is a real enquiry email from a real couple — not a copywriter, not a marketer. Write exactly how a real person types when emailing a vendor they found on Instagram. Think: slightly informal, direct, a little imprecise, no fancy words.
+
+  STRUCTURE — follow this exactly:
+  Sentence 1: "We're getting married on [WEDDING_DATE] and we're looking for a [CATEGORY_VENDOR]."
+  Sentence 2: One specific thing they kept noticing across their saved images — described in plain everyday words, like explaining a photo to a friend. Example: "We've saved a lot of photos where the flowers just overflow everything — like they're spilling out of the containers." NOT: "We are drawn to arrangements where botanical elements cascade organically."
+  Sentence 3: A simple, genuine question. Example: "Is that kind of look something you do?" or "Would love to know if you're available and what that would look like budget-wise."
+
+  BANNED WORDS — never use these:
+  vessel, voluminous, aesthetic, curated, lush, grand, atmosphere, botanical, organic, cascade, trailing, spilling, abundant, immersive, tactile, ethereal, intentional, elevated, artisanal.
+
+  USE INSTEAD: plain words a 28-year-old uses in a text message.
+  "flowers that overflow" not "cascading botanical abundance".
+  "lots of greenery" not "verdant foliage".
+  "really full arrangements" not "voluminous floral installations".
+
+  Scoped ONLY to what this vendor category provides.
+
+  vendor_brief.vision: maximum 80 words. Used at the creative consultation after booking. First person plural. Still plain language but slightly more detailed than the inquiry. Describes what they keep noticing in their saved images — 2-3 specific patterns, concretely described. States one thing that would feel wrong — specific, not abstract. Does NOT use florist vocabulary or poetic language. Reads like someone explaining their Pinterest board to a friend, not writing a design brief. Scoped ONLY to what this vendor category provides.
 - planner.booking_window: maximum 10 words. Category-specific timing. Real US market booking windows only.
 - planner.questions_to_ask: exactly 3 questions. Maximum 15 words each. Specific to this style option — not generic wedding questions.
 - planner.coordination_checklist: exactly 3 items. Maximum 12 words each. Imperative format. Concrete and immediately actionable.
@@ -251,7 +270,15 @@ const ANALYSIS_SCHEMA = {
               additionalProperties: false
             }
           },
-          vendor_brief: { type: 'string' },
+          vendor_brief: {
+            type: 'object',
+            properties: {
+              inquiry: { type: 'string' },
+              vision: { type: 'string' }
+            },
+            required: ['inquiry', 'vision'],
+            additionalProperties: false
+          },
           planner: {
             type: 'object',
             properties: {

@@ -22,7 +22,10 @@ export type StyleOption = {
     range: string
     note: string
   }[]
-  vendor_brief: string
+  vendor_brief: {
+    inquiry: string
+    vision: string
+  }
   planner: {
     booking_window: string
     questions_to_ask: string[]
