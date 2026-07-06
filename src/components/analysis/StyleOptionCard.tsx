@@ -44,6 +44,19 @@ export type StyleOption = {
     protect_first: string[]
     reduce_first: string[]
   }
+  pattern_insights?: {
+    sample_size: number
+    insights: {
+      percentage: number
+      observation: string
+    }[]
+  }
+  design_language?: {
+    flowers: string
+    greenery: string
+    texture_shape: string
+    vibe: string
+  }
 }
 
 interface StyleOptionCardProps {

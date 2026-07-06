@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useIsDesktop } from '@/hooks/useIsDesktop'
 import {
   Drawer,
@@ -29,6 +29,7 @@ import type {
   QuizAnswers,
   PersonalisedResult
 } from '@/types/analysis'
+import { getCategoryConfig, getCategoryKey } from '@/lib/category-config'
 
 interface StyleOptionCardsProps {
   options: StyleOption[]
@@ -41,7 +42,13 @@ export default function StyleOptionCards({
   categoryName,
   analysisId,
 }: StyleOptionCardsProps) {
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const isSingleOption = options.length === 1
+  const categoryKey = getCategoryKey(categoryName)
+  const categoryConfig = getCategoryConfig(categoryKey)
+
+  const [selectedId, setSelectedId] = useState<number | null>(
+    isSingleOption ? options[0].id : null
+  )
   const [openId, setOpenId] = useState<number | null>(null)
   const isDesktop = useIsDesktop()
 
@@ -109,6 +116,14 @@ export default function StyleOptionCards({
     }
   }
 
+  useEffect(() => {
+    if (isSingleOption) {
+      setSelectedId(options[0].id)
+      fetchAndPersonalise(options[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options[0]?.id])
+
   const handleSelect = (id: number) => {
     const newId = selectedId === id ? null : id
     setSelectedId(newId)
@@ -131,16 +146,18 @@ export default function StyleOptionCards({
     <div className="space-y-4">
 
       {/* ── 2×2 GRID ── */}
-      <div className="grid grid-cols-2 gap-4">
-        {options.map((option) => (
-          <StyleOptionCardCompact
-            key={option.id}
-            option={option}
-            isSelected={selectedId === option.id}
-            onClick={() => setOpenId(option.id)}
-          />
-        ))}
-      </div>
+      {!isSingleOption && (
+        <div className="grid grid-cols-2 gap-4">
+          {options.map((option) => (
+            <StyleOptionCardCompact
+              key={option.id}
+              option={option}
+              isSelected={selectedId === option.id}
+              onClick={() => setOpenId(option.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* ── POST-SELECTION SECTION ── */}
       {selectedOption && (
@@ -155,7 +172,7 @@ export default function StyleOptionCards({
             <div>
               <p className="text-sm font-semibold
               text-foreground leading-snug">
-                🌸 Your Flowers Direction
+                {categoryConfig.emoji} Your {categoryConfig.name} Direction
               </p>
               <p className="text-xs mt-0.5"
                 style={{ color: '#4A7A4A' }}>
@@ -163,18 +180,20 @@ export default function StyleOptionCards({
                 this choice
               </p>
             </div>
-            <button
-              onClick={() => setSelectedId(null)}
-              className="flex-shrink-0 px-3 py-1.5
-              rounded-full border border-border
-              text-xs text-muted-foreground
-              hover:text-foreground
-              hover:border-foreground/40
-              transition-colors whitespace-nowrap
-              mt-0.5"
-            >
-              Change style
-            </button>
+            {!isSingleOption && (
+              <button
+                onClick={() => setSelectedId(null)}
+                className="flex-shrink-0 px-3 py-1.5
+                rounded-full border border-border
+                text-xs text-muted-foreground
+                hover:text-foreground
+                hover:border-foreground/40
+                transition-colors whitespace-nowrap
+                mt-0.5"
+              >
+                Change style
+              </button>
+            )}
           </div>
 
           {/* Full-width palette strip with
@@ -205,11 +224,7 @@ export default function StyleOptionCards({
               quizAnswers={quizAnswers}
               personalisedResult={personalisedResult}
               isPersonalising={isPersonalising}
-              categoryKey={categoryName
-                .toLowerCase()
-                .replace(/[^a-z0-9]/g,'_')
-                .replace(/_+/g,'_')
-                .replace(/^_|_$/g,'')}
+              categoryKey={categoryKey}
             />
           </div>
 
@@ -217,7 +232,7 @@ export default function StyleOptionCards({
       )}
 
       {/* ── RESPONSIVE POPUP ── */}
-      {options.map((option) => {
+      {!isSingleOption && options.map((option) => {
         const isOpen = openId === option.id
         const isSelected = selectedId === option.id
 

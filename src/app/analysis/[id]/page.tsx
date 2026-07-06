@@ -1,59 +1,39 @@
-import { redirect, notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { redirect, notFound } from
+  'next/navigation'
+import { createClient } from
+  '@/lib/supabase/server'
 import { Suspense } from 'react'
-import CategoryAnalyser from '@/components/analysis/CategoryAnalyser'
-import CategorySkeleton from '@/components/analysis/CategorySkeleton'
-import Questionnaire from '@/components/analysis/Questionnaire'
+import { triggerMasterAnalysis } from
+  '@/app/actions/triggerMasterAnalysis'
+import MasterStyleCards from
+  '@/components/analysis/MasterStyleCards'
+import Questionnaire from
+  '@/components/analysis/Questionnaire'
 
-// Force dynamic rendering on every request
-// Prevents Next.js from statically caching
-// user-specific analysis pages
-// Critical: without this, cross-user data
-// leakage is possible via edge/CDN caching
 export const dynamic = 'force-dynamic'
 
-// This type is required in Next.js 15 — params is a Promise
 type PageProps = {
   params: Promise<{ id: string }>
 }
 
-// UUID v4 format validator
-// Validates format BEFORE hitting the database
-// Prevents malformed requests, log pollution,
-// and potential query edge cases
-// No external library needed — pure regex
 function isValidUUID(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-// This function runs BEFORE streaming starts
-// It validates auth and ownership server-side
-// notFound() and redirect() here work correctly
-// because no HTML has been sent to the browser yet
-async function validateAndFetchAnalysis(id: string) {
-  // SECURITY CHECK 0 — validate UUID format first
-  // Prevents malformed IDs from hitting the database
-  // notFound() here is safe — no streaming has started
-  if (!isValidUUID(id)) {
-    notFound()
-  }
+async function validateAndFetchAnalysis(
+  id: string
+) {
+  if (!isValidUUID(id)) { notFound() }
 
   const supabase = await createClient()
-
-  // SECURITY CHECK 1 — verify user is authenticated
-  // getUser() sends a request to Supabase Auth server
-  // every time to revalidate the token — safe to trust
-  const { data: { user }, error: authError } =
-    await supabase.auth.getUser()
-
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser()
   if (authError || !user) {
     redirect('/login')
   }
 
-  // SECURITY CHECK 2 — verify ownership
-  // scope query to BOTH id AND user.id
-  // prevents authenticated users accessing
-  // other users' analyses by guessing UUIDs
   const { data: analysis, error: dbError } =
     await supabase
       .from('analyses')
@@ -62,127 +42,173 @@ async function validateAndFetchAnalysis(id: string) {
       .eq('user_id', user.id)
       .single()
 
-  if (dbError || !analysis) {
-    notFound()
-  }
-
+  if (dbError || !analysis) { notFound() }
   return { analysis, user }
 }
 
-// Skeleton component for Suspense fallback
-// Used INSIDE the page — not as a route-level loading.tsx
-function AnalysisSkeleton() {
+// ── Skeletons ──────────────────────────────
+
+function MasterAnalysisSkeleton() {
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
-      <div className="h-8 w-48 bg-muted rounded-lg
-          animate-pulse mb-2" />
-      <div className="h-4 w-64 bg-muted rounded
-          animate-pulse mb-8" />
-      <div className="flex gap-2 mb-6">
+    <div className="space-y-4 animate-pulse">
+      <div className="grid grid-cols-2 gap-3">
         {[1,2,3,4].map(i => (
-          <div key={i} className="h-9 w-24 bg-muted
-              rounded-lg animate-pulse" />
-        ))}
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="rounded-xl border
-              bg-card overflow-hidden">
-            <div className="h-28 bg-muted animate-pulse" />
-            <div className="p-3 space-y-2">
-              <div className="h-4 w-32 bg-muted
-                  rounded animate-pulse" />
-              <div className="h-3 w-full bg-muted
-                  rounded animate-pulse" />
+          <div
+            key={i}
+            className="rounded-2xl border
+            border-border/40 p-4 space-y-3"
+          >
+            <div className="h-4 bg-muted/60
+            rounded w-3/4" />
+            <div className="h-3 bg-muted/40
+            rounded w-full" />
+            <div className="h-4 bg-muted/40
+            rounded-md w-full" />
+            <div className="space-y-1.5">
+              {[1,2,3].map(j => (
+                <div
+                  key={j}
+                  className="flex gap-2
+                  items-center"
+                >
+                  <div className="w-4 h-4
+                  bg-muted/40 rounded-sm
+                  flex-shrink-0" />
+                  <div className="flex-1 h-2.5
+                  bg-muted/40 rounded-sm" />
+                </div>
+              ))}
             </div>
           </div>
         ))}
       </div>
-      <p className="text-center text-sm
-          text-muted-foreground animate-pulse mt-6">
-        Reading your images and finding your patterns...
-      </p>
     </div>
   )
 }
 
-// Async component that renders the actual content
-// Wrapped in Suspense inside the page
-// Streaming happens HERE — after auth is validated
-async function AnalysisContent({ id }: { id: string }) {
-  const { analysis, user } = await validateAndFetchAnalysis(id)
+// ── Analysis Content (server component) ───
 
-  // Parse image_urls from the analysis row
-  // This is the array of Cloudinary URLs stored in Supabase
-  const imageUrls: string[] = analysis.image_urls ?? []
+async function AnalysisContent({
+  analysisId,
+  imageUrls,
+}: {
+  analysisId: string
+  imageUrls: string[]
+}) {
+  const result = await triggerMasterAnalysis({
+    analysisId,
+    imageUrls,
+  })
 
-  // For now we treat all images as one category
-  // In Task 7.5 we will split by category groups
-  // This validates the parallel streaming pattern works
-  const categories = [
-    { name: 'Flowers & Décor', urls: imageUrls },
-  ]
+  if (!result.success || !result.data) {
+    return (
+      <div className="rounded-xl border
+      border-destructive/20 bg-destructive/5
+      p-6 text-center">
+        <p className="text-sm font-medium
+        text-destructive mb-1">
+          Could not analyse your images
+        </p>
+        <p className="text-xs
+        text-muted-foreground">
+          {result.error ??
+            'Please try again'}
+        </p>
+      </div>
+    )
+  }
+
+  const { options } = result.data
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-semibold mb-2">
-        Your Vision Analysis
-      </h1>
-      <p className="text-muted-foreground text-sm mb-8">
-        Each category is analysed simultaneously —
-        results stream in as they complete.
-      </p>
-
-      <Questionnaire
-        analysisId={analysis.id}
-        userId={user.id}
-      />
-
-      <div className="space-y-6">
-        {categories.map(category => (
-          <Suspense
-            key={category.name}
-            fallback={
-              <CategorySkeleton
-                categoryName={category.name}
-              />
-            }
-          >
-            <CategoryAnalyser
-              analysisId={id}
-              categoryName={category.name}
-              imageUrls={category.urls}
-            />
-          </Suspense>
-        ))}
-      </div>
-    </div>
+    <MasterStyleCards
+      options={options}
+      analysisId={analysisId}
+      imageUrls={imageUrls}
+    />
   )
 }
 
-// Main page component
-// validateAndFetchAnalysis runs here FIRST
-// before any JSX or streaming begins
-// This ensures notFound() and redirect() work correctly
-export default async function AnalysisPage(
-  { params }: PageProps
-) {
-  // Await params — required in Next.js 15
+// ── Wrapper — second auth + ownership ─────
+
+async function AnalysisContentWrapper({
+  id,
+  userId,
+}: {
+  id: string
+  userId: string
+}) {
+  const { analysis } =
+    await validateAndFetchAnalysis(id)
+
+  const imageUrls: string[] =
+    analysis.image_urls ?? []
+
+  return (
+    <AnalysisContent
+      analysisId={id}
+      imageUrls={imageUrls}
+    />
+  )
+}
+
+// ── Page ───────────────────────────────────
+
+export default async function AnalysisPage({
+  params,
+}: PageProps) {
   const { id } = await params
 
-  // Run validation BEFORE streaming starts
-  // If user is not authenticated → redirect('/login')
-  // If analysis not found or not owned → notFound()
-  // Both work correctly here because no HTML sent yet
-  await validateAndFetchAnalysis(id)
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser()
+  if (authError || !user) {
+    redirect('/login')
+  }
 
-  // Only reaches here if validation passed
-  // Now safe to stream the UI with Suspense
+  if (!isValidUUID(id)) {
+    notFound()
+  }
+
   return (
-    <main className="min-h-screen bg-background">
-      <Suspense fallback={<AnalysisSkeleton />}>
-        <AnalysisContent id={id} />
-      </Suspense>
+    <main className="min-h-screen
+    bg-background">
+      <div className="max-w-2xl mx-auto
+      px-4 py-8 space-y-6">
+
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl
+          font-semibold text-foreground
+          mb-1">
+            Your Vision Analysis
+          </h1>
+          <p className="text-sm
+          text-muted-foreground">
+            We analysed your images to find
+            your wedding style direction.
+          </p>
+        </div>
+
+        {/* Questionnaire during analysis */}
+        <Questionnaire
+          analysisId={id}
+          userId={user.id}
+        />
+
+        {/* Master analysis — streams in */}
+        <Suspense
+          fallback={<MasterAnalysisSkeleton />}
+        >
+          <AnalysisContentWrapper
+            id={id}
+            userId={user.id}
+          />
+        </Suspense>
+
+      </div>
     </main>
   )
 }

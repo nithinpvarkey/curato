@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from '@/components/ui/tabs'
+  Flower2,
+  Leaf,
+  Shapes,
+  Sparkles
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CostBreakdownDonut } from './CostBreakdownDonut'
 import type { StyleOption } from './StyleOptionCard'
 import type {
   QuizAnswers,
@@ -28,49 +29,23 @@ interface StyleOptionTabsProps {
   categoryKey: string
 }
 
-function getBudgetFitLabel(
-  score: 'full' | 'partial' | 'stretch',
-  percentage: string
-): {
-  emoji: string
-  label: string
-  colour: string
-  reasoning: string
-} {
-  const pct = percentage.split('–')[0]
-  switch (score) {
-    case 'full':
-      return {
-        emoji: '🟢',
-        label: 'Strong Fit',
-        colour: '#15803d',
-        reasoning: `This style requires roughly
-${pct}% of your total budget — within a
-healthy range. You can achieve the full
-atmosphere without major compromises.`
-      }
-    case 'partial':
-      return {
-        emoji: '🟡',
-        label: 'Moderate Fit',
-        colour: '#a16207',
-        reasoning: `This style requires roughly
-${pct}% of your total budget. Some
-adjustments are needed — see the priority
-guide below to protect what matters most.`
-      }
-    case 'stretch':
-      return {
-        emoji: '🔴',
-        label: 'Stretch Budget',
-        colour: '#dc2626',
-        reasoning: `This style typically costs
-more than your category allocation. Focus
-on must-protect elements and use the
-savings opportunities below to get as
-close as possible.`
-      }
-  }
+function parsePriceMidpoint(range: string): number {
+  const nums = range.match(/[\d,]+(\.\d+)?/g)
+    ?.map(n => parseFloat(n.replace(/,/g, '')))
+  if (!nums || nums.length === 0) return 0
+  return nums.length >= 2
+    ? (nums[0] + nums[1]) / 2
+    : nums[0]
+}
+
+function parseDollarRangeBounds(
+  text: string
+): { low: number; high: number } | null {
+  const nums = text.match(/[\d,]+(\.\d+)?/g)
+    ?.map(n => parseFloat(n.replace(/,/g, '')))
+  if (!nums || nums.length < 2) return null
+  if (nums[0] <= 0 || nums[1] <= 0) return null
+  return { low: nums[0], high: nums[1] }
 }
 
 export default function StyleOptionTabs({
@@ -99,6 +74,37 @@ export default function StyleOptionTabs({
     quizAnswers.guest_count
   )
 
+  const typicalCost = parseDollarRangeBounds(
+    option.budget_reality_range
+  )
+  const realityGap =
+    hasQuizData && typicalCost
+      ? {
+          lowPct: Math.round(
+            (allocation.min / typicalCost.high) * 100
+          ),
+          highPct: Math.round(
+            (allocation.max / typicalCost.low) * 100
+          ),
+        }
+      : null
+
+  const costBreakdownItems = (
+    personalisedResult?.personalised_budget_items ??
+    option.budget_items.map(b => ({
+      item: b.item,
+      adjusted_range: b.range,
+      achievable: true,
+      note: b.note,
+    }))
+  ).map(item => ({
+    name: item.item,
+    description: item.note,
+    priceLabel: item.adjusted_range,
+    chartValue: parsePriceMidpoint(item.adjusted_range),
+    achievable: item.achievable,
+  }))
+
   const bookingStatus = getBookingStatus(
     option.planner.booking_window,
     quizAnswers.wedding_month,
@@ -124,6 +130,10 @@ export default function StyleOptionTabs({
           ? 'photographer'
           : categoryKey === 'attire_styling'
           ? 'stylist'
+          : categoryKey === 'tablescape'
+          ? 'rental and tabletop specialist'
+          : categoryKey === 'lighting_atmosphere'
+          ? 'lighting designer'
           : 'vendor'
       )
 
@@ -174,607 +184,488 @@ export default function StyleOptionTabs({
   }
 
   return (
-    <div className="animate-in slide-in-from-top-2
-    fade-in duration-300 mt-6">
+    <div className="space-y-6">
 
-      {/* Section label */}
-      <p className="text-xs font-semibold uppercase
-      tracking-widest text-muted-foreground/60
-      mb-3 px-1">
-        Your {option.name} direction
-      </p>
+      {/* ── MAIN + SIDEBAR 12-COL LAYOUT ── */}
+      <div className="grid grid-cols-1
+      lg:grid-cols-12 gap-5">
 
-      <Tabs defaultValue="brief">
+        {/* ── MAIN COLUMN (lg: 8 cols) ── */}
+        <div className="lg:col-span-8 space-y-5">
 
-        {/* Scrollable tab row — mobile friendly */}
-        <div className="overflow-x-auto
-        scrollbar-none -mx-1 px-1 mb-4">
-          <TabsList
-            variant="line"
-            className="w-max min-w-full flex"
-          >
-            <TabsTrigger
-              value="brief"
-              className="flex-1"
-            >
-              Vision
-            </TabsTrigger>
-            <TabsTrigger
-              value="donts"
-              className="flex-1"
-            >
-              Don&apos;ts
-            </TabsTrigger>
-            <TabsTrigger
-              value="planner"
-              className="flex-1"
-            >
-              Planner
-            </TabsTrigger>
-            <TabsTrigger
-              value="keywords"
-              className="flex-1"
-            >
-              Search
-            </TabsTrigger>
-            <TabsTrigger
-              value="budget"
-              className="flex-1"
-            >
-              Budget
-            </TabsTrigger>
-          </TabsList>
-        </div>
+          {/* SUB-ROW: Why Curato + Design Language */}
+          <div className="grid grid-cols-1
+          lg:grid-cols-2 gap-5 items-start">
 
-        {/* ── VISION TAB ── */}
-        <TabsContent value="brief">
-          <div className="space-y-4">
-
-            {/* FOR YOUR FIRST MESSAGE */}
-            <div
-              className="rounded-2xl border-2
-              p-6 space-y-4"
-              style={{ borderColor: accentHex }}
-            >
-              <div className="space-y-1">
-                <p
-                  className="text-[10px]
-                  font-semibold uppercase
-                  tracking-widest"
-                  style={{ color: accentHex }}
-                >
-                  For your first message
-                </p>
-                <p className="text-xs
-                text-muted-foreground
-                leading-relaxed">
-                  Send this when you first
-                  reach out — before you've met.
-                </p>
-              </div>
-              <p className="text-sm
-              text-foreground/80 leading-relaxed">
-                {resolvedInquiry}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full h-11 text-sm
-                transition-all duration-200"
-                onClick={handleCopyInquiry}
-                style={copiedInquiry ? {
-                  borderColor: accentHex,
-                  color: accentHex,
-                } : undefined}
-              >
-                {copiedInquiry
-                  ? '✓ Copied'
-                  : 'Copy inquiry message'}
-              </Button>
-            </div>
-
-            {/* FOR YOUR CONSULTATION */}
+            {/* CARD: Why Curato Chose This */}
             <div className="rounded-2xl border
-            border-border/40 bg-[#FDFAF7]
-            p-6 space-y-4">
-              <div className="space-y-1">
-                <p className="text-[10px]
-                font-semibold uppercase
-                tracking-widest
-                text-muted-foreground/60">
-                  For your consultation
-                </p>
-                <p className="text-xs
-                text-muted-foreground
-                leading-relaxed">
-                  Share this after you've
-                  booked — at your first
-                  creative meeting.
-                </p>
-              </div>
-              <p className="text-sm
-              text-foreground/80 leading-relaxed">
-                {option.vendor_brief.vision}
-              </p>
-              <Button
-                variant="outline"
-                className="w-full h-11 text-sm
-                transition-all duration-200"
-                onClick={handleCopyVision}
-                style={copiedVision ? {
-                  borderColor: accentHex,
-                  color: accentHex,
-                } : undefined}
-              >
-                {copiedVision
-                  ? '✓ Copied'
-                  : 'Copy vision brief'}
-              </Button>
-            </div>
-
-            {/* COPY BOTH */}
-            <Button
-              variant="ghost"
-              className="w-full h-9 text-xs
-              text-muted-foreground
-              hover:text-foreground
-              transition-all duration-200"
-              onClick={handleCopyBoth}
-              style={copiedBoth ? {
-                color: accentHex,
-              } : undefined}
-            >
-              {copiedBoth
-                ? '✓ Both copied'
-                : 'Copy both together'}
-            </Button>
-
-          </div>
-        </TabsContent>
-
-        {/* ── DON'TS TAB ── */}
-        <TabsContent value="donts">
-          <div className="bg-[#FDFAF7] rounded-2xl
-          border border-border/40 p-6">
-            <p className="text-[10px] font-semibold
-            uppercase tracking-widest
-            text-muted-foreground/60 mb-4">
-              Tell your vendor to avoid these
-            </p>
-            <ul className="space-y-3">
-              {option.do_not_list.map((item, i) => (
-                <li
-                  key={i}
-                  className="flex items-start
-                  gap-3 text-sm text-foreground/80
-                  leading-relaxed"
-                >
-                  <span
-                    className="font-bold mt-0.5
-                    flex-shrink-0 text-sm"
-                    style={{ color: accentHex }}
-                  >
-                    —
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </TabsContent>
-
-        {/* ── PLANNER TAB ── */}
-        <TabsContent value="planner">
-          <div className="bg-[#FDFAF7] rounded-2xl
-          border border-border/40 p-6 space-y-6">
-
-            {/* Book by */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-2">
-                Book by
-              </p>
-              <div>
-                <p className="text-sm font-medium
-                text-foreground leading-snug">
-                  {bookingStatus?.genericText ??
-                    option.planner.booking_window}
-                </p>
-                {bookingStatus?.calculatedMessage && (
-                  <p className={`text-sm mt-1
-                  leading-relaxed
-                  ${bookingStatus.urgency === 'emergency' ||
-                    bookingStatus.urgency === 'overdue'
-                    ? 'text-destructive/80 font-medium'
-                    : bookingStatus.urgency === 'soon' ||
-                      bookingStatus.urgency === 'urgent'
-                    ? 'text-amber-600'
-                    : 'text-muted-foreground'
-                  }`}>
-                    ({bookingStatus.calculatedMessage})
+            border-border/40 bg-white p-5">
+              <h3 className="font-serif font-semibold
+              text-[15px] text-[#1F1B17] mb-3">
+                Why Curato Chose This Direction
+              </h3>
+              {option.pattern_insights ? (
+                <>
+                  <p className="text-small mb-4">
+                    We analyzed{' '}
+                    {option.pattern_insights.sample_size}{' '}
+                    saved images.
                   </p>
-                )}
-              </div>
+                  <ul className="space-y-2.5">
+                    {option.pattern_insights.insights
+                      .map((insight, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start
+                        gap-2.5 text-small"
+                      >
+                        <span
+                          className="flex-shrink-0
+                          w-1 h-1 rounded-full mt-2.5"
+                          style={{
+                            backgroundColor: '#8FAF7E',
+                          }}
+                        />
+                        <span>
+                          <span className="text-[#1F1B17]
+                          font-semibold tabular-nums">
+                            {insight.percentage}%
+                          </span>
+                          {' '}
+                          {insight.observation}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="text-body">
+                    {option.why_your_style}
+                  </p>
+                  <p className="text-small mt-3">
+                    {option.signal_evidence}
+                  </p>
+                </>
+              )}
             </div>
 
-            <div className="border-t
-            border-border/30" />
+            {/* CARD: Design Language */}
+            {option.design_language && (
+              <div className="rounded-2xl border
+              border-border/40 bg-white p-5">
+                <h3 className="font-serif font-semibold
+                text-[15px] text-[#1F1B17] mb-5">
+                  Design Language
+                </h3>
+                <div className="grid grid-cols-2
+                gap-4">
 
-            {/* Ask your vendor */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Ask your vendor
-              </p>
-              <ul className="space-y-4">
-                {option.planner.questions_to_ask
-                  .map((q, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start
-                    gap-3 text-sm text-foreground/80
-                    leading-relaxed"
-                  >
-                    <span
-                      className="text-xs font-bold
-                      flex-shrink-0 mt-0.5 w-4
-                      text-center"
+                  <div>
+                    <Flower2
+                      className="h-5 w-5 mb-1.5"
+                      strokeWidth={1.5}
                       style={{ color: accentHex }}
-                    >
-                      {i + 1}
-                    </span>
-                    {q}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t
-            border-border/30" />
-
-            {/* Your next steps */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Your next steps
-              </p>
-              <ul className="space-y-3">
-                {option.planner.coordination_checklist
-                  .map((item, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start
-                    gap-3 text-sm text-foreground/80
-                    leading-relaxed"
-                  >
-                    <div
-                      className="w-4 h-4 rounded
-                      border-2 flex-shrink-0 mt-0.5"
-                      style={{
-                        borderColor: accentHex
-                      }}
                     />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-          </div>
-        </TabsContent>
-
-        {/* ── KEYWORDS TAB ── */}
-        <TabsContent value="keywords">
-          <div className="bg-[#FDFAF7] rounded-2xl
-          border border-border/40 p-6 space-y-5">
-
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Search for vendors using
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {option.vendor_keywords.map(
-                  (kw, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5
-                    rounded-full text-xs
-                    font-medium border"
-                    style={{
-                      backgroundColor:
-                        `${accentHex}15`,
-                      borderColor:
-                        `${accentHex}40`,
-                      color: accentHex,
-                    }}
-                  >
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="border-t
-            border-border/30" />
-
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Don't search these
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {option.avoid_keywords.map(
-                  (kw, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5
-                    rounded-full text-xs
-                    font-medium border
-                    text-muted-foreground/50
-                    border-border/30
-                    bg-muted/20 line-through"
-                  >
-                    {kw}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-          </div>
-        </TabsContent>
-
-        {/* ── BUDGET TAB ── */}
-        <TabsContent value="budget">
-          <div className="bg-[#FDFAF7] rounded-2xl
-          border border-border/40 p-6 space-y-6">
-
-            {/* Reality Check Banner */}
-            <div
-              className="rounded-xl px-4 py-4
-              flex items-start gap-3"
-              style={{
-                backgroundColor: `${accentHex}12`,
-              }}
-            >
-              <span className="text-lg
-              flex-shrink-0 leading-none mt-0.5">
-                🟡
-              </span>
-              <div>
-                <p className="text-xs font-semibold
-                text-foreground mb-1">
-                  Budget Reality Check
-                </p>
-                {personalisedResult &&
-                 !isPersonalising ? (
-                  <p className="text-sm
-                  text-foreground/80 leading-relaxed">
-                    {personalisedResult
-                      .budget_gap_summary}
-                  </p>
-                ) : (
-                  <p className="text-sm
-                  text-foreground/80 leading-relaxed">
-                    Your selected direction
-                    typically requires{' '}
-                    <span className="font-semibold">
-                      {option.budget_reality_range}
-                    </span>
-                    {isPersonalising && (
-                      <span className="text-xs
-                      text-muted-foreground
-                      ml-2 animate-pulse">
-                        Personalising...
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* YOUR BUDGET FIT */}
-            {hasQuizData && (
-              <div className="rounded-xl border
-              border-border/40 overflow-hidden">
-                <div className="px-4 py-3
-                border-b border-border/30
-                bg-muted/20">
-                  <p className="text-[10px]
-                  font-semibold uppercase
-                  tracking-widest
-                  text-muted-foreground/60">
-                    Your budget fit
-                  </p>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center
-                  justify-between">
-                    <span className="text-xs
-                    text-muted-foreground">
-                      Total wedding budget
-                    </span>
-                    <span className="text-xs
-                    font-semibold text-foreground">
-                      {quizAnswers.budget_range ??
-                        'Not set'}
-                    </span>
-                  </div>
-                  <div className="flex items-center
-                  justify-between">
-                    <span className="text-xs
-                    text-muted-foreground">
-                      Realistic for this category
-                    </span>
-                    <span
-                      className="text-xs font-semibold"
-                      style={{ color: accentHex }}
+                    <p className="text-label mb-2">
+                      Flowers
+                    </p>
+                    <p
+                      className="text-small"
+                      style={{ color: '#4F4A45' }}
                     >
-                      {allocation.formatted}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="h-1.5
-                    bg-muted/40 rounded-full
-                    overflow-hidden">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          backgroundColor: accentHex,
-                          width: `${allocation
-                            .percentage
-                            .split('–')[0]}%`
-                        }}
-                      />
-                    </div>
-                    <p className="text-[10px]
-                    text-muted-foreground">
-                      {allocation.percentage} of
-                      your total budget
+                      {option.design_language.flowers}
                     </p>
                   </div>
 
-                  {personalisedResult &&
-                   !isPersonalising && (() => {
-                    const fit = getBudgetFitLabel(
-                      personalisedResult
-                        .achievability_score,
-                      allocation.percentage
-                    )
-                    return (
-                      <div className="pt-2
-                      border-t border-border/30
-                      flex items-start gap-2">
-                        <span className="text-base
-                        flex-shrink-0 leading-none
-                        mt-0.5">
-                          {fit.emoji}
-                        </span>
-                        <div>
-                          <p
-                            className="text-xs
-                            font-semibold mb-0.5"
-                            style={{ color: fit.colour }}
-                          >
-                            {fit.label}
+                  <div>
+                    <Leaf
+                      className="h-5 w-5 mb-1.5"
+                      strokeWidth={1.5}
+                      style={{ color: accentHex }}
+                    />
+                    <p className="text-label mb-2">
+                      Greenery
+                    </p>
+                    <p
+                      className="text-small"
+                      style={{ color: '#4F4A45' }}
+                    >
+                      {option.design_language.greenery}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Shapes
+                      className="h-5 w-5 mb-1.5"
+                      strokeWidth={1.5}
+                      style={{ color: accentHex }}
+                    />
+                    <p className="text-label mb-2">
+                      Texture &amp; Shape
+                    </p>
+                    <p
+                      className="text-small"
+                      style={{ color: '#4F4A45' }}
+                    >
+                      {option.design_language
+                        .texture_shape}
+                    </p>
+                  </div>
+
+                  <div>
+                    <Sparkles
+                      className="h-5 w-5 mb-1.5"
+                      strokeWidth={1.5}
+                      style={{ color: accentHex }}
+                    />
+                    <p className="text-label mb-2">
+                      Vibe
+                    </p>
+                    <p
+                      className="text-small"
+                      style={{ color: '#4F4A45' }}
+                    >
+                      {option.design_language.vibe}
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* CARD: Protect / Reduce / Preserve */}
+          <div className="rounded-2xl border
+          border-border/40 bg-white p-5 md:p-6">
+            <h3 className="text-card-title mb-4">
+              What to Protect, What to Reduce
+            </h3>
+            <div className="grid grid-cols-1
+            md:grid-cols-3 gap-5">
+
+              {/* Protect First */}
+              <div>
+                <p
+                  className="text-label mb-3"
+                  style={{ color: accentHex }}
+                >
+                  Protect First (High Impact)
+                </p>
+                <ul className="space-y-2">
+                  {option.atmosphere_protection
+                    .protect_first
+                    .map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start
+                      gap-2 text-xs
+                      text-foreground/80
+                      leading-snug"
+                    >
+                      <span
+                        className="flex-shrink-0
+                        mt-0.5 font-bold text-xs"
+                        style={{ color: accentHex }}
+                      >
+                        ✓
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Reduce First */}
+              <div>
+                <p className="text-label mb-3">
+                  Reduce First (Lower Impact)
+                </p>
+                <ul className="space-y-2">
+                  {option.atmosphere_protection
+                    .reduce_first
+                    .map((item, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start
+                      gap-2 text-xs
+                      text-muted-foreground/80
+                      leading-snug"
+                    >
+                      <span className="flex-shrink-0
+                      mt-0.5 text-xs">
+                        •
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Preserve The Feeling For Less */}
+              <div>
+                <p className="text-label mb-3">
+                  Preserve the Feeling for Less
+                </p>
+                <ul className="space-y-3">
+                  {option.savings_opportunities
+                    .map((opp, i) => (
+                    <li
+                      key={i}
+                      className="text-xs space-y-1"
+                    >
+                      <p className="text-muted-foreground/60
+                      line-through leading-snug">
+                        {opp.expensive_element}
+                      </p>
+                      <p className="text-foreground/80
+                      leading-snug">
+                        → {opp.lower_cost_alternative}
+                      </p>
+                      <p
+                        className="text-[10px]
+                        font-semibold"
+                        style={{ color: accentHex }}
+                      >
+                        Save {opp.estimated_saving}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          {/* CARD: Budget Reality Check + Cost Breakdown */}
+          <div className="rounded-2xl border
+          border-border/40 bg-white p-5 md:p-6
+          space-y-5">
+
+            {/* Budget Reality Check */}
+            <div className="space-y-4">
+              <h3 className="text-card-title">
+                Budget Reality Check
+              </h3>
+
+              <div className="flex flex-col
+              md:flex-row">
+
+                {/* LEFT: Reality gap stat */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start
+                  justify-between gap-2 mb-1">
+                    <p className="text-label">
+                      Budget covers
+                    </p>
+                    {realityGap && (
+                      <span
+                        className="px-2 py-0.5
+                        rounded-full bg-destructive/10
+                        text-destructive/80 font-sans
+                        text-[10.5px] font-bold
+                        uppercase tracking-[0.14em]
+                        leading-none whitespace-nowrap
+                        flex-shrink-0"
+                      >
+                        Reality gap
+                      </span>
+                    )}
+                  </div>
+
+                  {realityGap && typicalCost ? (
+                    <>
+                      <p className="font-serif
+                      text-[24px] font-semibold
+                      text-destructive/80
+                      leading-tight">
+                        ~{realityGap.lowPct}–
+                        {realityGap.highPct}%
+                      </p>
+                      <p className="text-small mt-1.5">
+                        of typical cost for this look
+                      </p>
+
+                      <div className="h-3
+                      rounded-full overflow-hidden
+                      mt-3 bg-destructive/10">
+                        <div
+                          className="h-full
+                          rounded-full"
+                          style={{
+                            backgroundColor: '#8FAF8A',
+                            width: `${Math.min(
+                              100, realityGap.lowPct
+                            )}%`,
+                          }}
+                        />
+                      </div>
+
+                      <div className="grid
+                      grid-cols-2 gap-2 mt-3">
+                        <div className="rounded-lg
+                        bg-muted/20 border
+                        border-border/40 px-2.5 py-2">
+                          <p className="text-label mb-1">
+                            Your budget
                           </p>
-                          <p className="text-xs
-                          text-muted-foreground
-                          leading-relaxed">
-                            {fit.reasoning}
+                          <p className="text-[15px]
+                          font-semibold
+                          text-foreground">
+                            {allocation.formatted}
+                          </p>
+                        </div>
+                        <div className="rounded-lg
+                        bg-muted/20 border
+                        border-border/40 px-2.5 py-2">
+                          <p className="text-label mb-1">
+                            Typical cost
+                          </p>
+                          <p className="text-[15px]
+                          font-semibold
+                          text-foreground">
+                            ${typicalCost.low
+                              .toLocaleString()}–
+                            ${typicalCost.high
+                              .toLocaleString()}
                           </p>
                         </div>
                       </div>
-                    )
-                  })()}
+                    </>
+                  ) : (
+                    <p className="text-small mt-2">
+                      Add your wedding budget to see
+                      how it compares to typical cost
+                      for this look.
+                    </p>
+                  )}
                 </div>
-              </div>
-            )}
 
-            {/* CURATO ADVICE */}
-            {personalisedResult?.curato_advice &&
-             !isPersonalising && (
-              <div
-                className="rounded-xl p-4
-                border border-border/40"
-                style={{
-                  backgroundColor: `${accentHex}08`
-                }}
-              >
-                <p
-                  className="text-[10px]
-                  font-semibold uppercase
-                  tracking-widest mb-2"
-                  style={{ color: accentHex }}
-                >
-                  What we&apos;d do in your situation
-                </p>
-                <p className="text-sm
-                text-foreground/80 leading-relaxed">
-                  {personalisedResult.curato_advice}
-                </p>
-              </div>
-            )}
+                {/* Divider */}
+                <div className="hidden md:block
+                w-px bg-border/40 mx-5" />
 
-            {/* IF THIS WERE MY BUDGET */}
-            {personalisedResult &&
-             !isPersonalising && (
-              <div>
-                <p className="text-[10px]
-                font-semibold uppercase
-                tracking-widest
-                text-muted-foreground/60 mb-3">
-                  If this were my budget
-                </p>
-                <div className="space-y-2.5">
-                  {[
-                    ...option.atmosphere_protection
-                      .protect_first
-                      .slice(0, 2)
-                      .map((item, i) => ({
-                        priority: i + 1,
-                        text: `Protect ${item}`,
-                        isProtect: true
-                      })),
-                    ...personalisedResult
-                      .top_priority_cuts
-                      .slice(0, 2)
-                      .map((cut, i) => ({
-                        priority: i + 3,
-                        text: `Cut ${
-                          cut.cut_this
-                        } — use ${
-                          cut.keep_this
-                        } instead`,
-                        isProtect: false
-                      }))
-                  ].map((item) => (
-                    <div
-                      key={item.priority}
-                      className="flex items-start
-                      gap-3 text-sm
-                      text-foreground/80
-                      leading-relaxed"
-                    >
-                      <span
-                        className="text-[10px]
-                        font-bold flex-shrink-0
-                        mt-0.5 w-5 h-5 rounded-full
-                        flex items-center
-                        justify-center text-white"
-                        style={{
-                          backgroundColor:
-                            item.isProtect
-                              ? accentHex
-                              : '#9ca3af'
-                        }}
+                {/* RIGHT: What drives the cost */}
+                <div className="flex-1 min-w-0
+                mt-5 md:mt-0">
+                  <h4 className="font-serif
+                  font-semibold text-[15px]
+                  text-[#1F1B17] mb-3">
+                    What drives the cost
+                  </h4>
+                  <ul className="space-y-2">
+                    {option.cost_drivers
+                      .slice(0, 3)
+                      .map((driver, i) => (
+                      <li
+                        key={i}
+                        className="flex items-start
+                        gap-2 text-small"
                       >
-                        {item.priority}
-                      </span>
-                      {item.text}
-                    </div>
-                  ))}
+                        <span className="flex-shrink-0
+                        text-[10px] mt-0.5">
+                          ⚠️
+                        </span>
+                        {driver}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+
               </div>
-            )}
 
-            <div className="border-t
-            border-border/30" />
+              {/* Curato advice */}
+              {personalisedResult?.curato_advice &&
+               !isPersonalising && (
+                <div
+                  className="rounded-lg p-3
+                  border border-border/40"
+                  style={{
+                    backgroundColor: `${accentHex}08`
+                  }}
+                >
+                  <p
+                    className="text-label mb-2"
+                    style={{ color: accentHex }}
+                  >
+                    What we&apos;d do
+                  </p>
+                  <p className="text-xs
+                  text-foreground/80 leading-relaxed">
+                    {personalisedResult.curato_advice}
+                  </p>
+                </div>
+              )}
 
-            {/* Cost breakdown table */}
-            <div>
+              {/* If this were my budget */}
+              {personalisedResult &&
+               !isPersonalising && (
+                <div>
+                  <p className="text-label mb-3">
+                    If this were my budget
+                  </p>
+                  <div className="space-y-2">
+                    {[
+                      ...option.atmosphere_protection
+                        .protect_first
+                        .slice(0, 2)
+                        .map((item, i) => ({
+                          priority: i + 1,
+                          text: `Protect ${item}`,
+                          isProtect: true
+                        })),
+                      ...personalisedResult
+                        .top_priority_cuts
+                        .slice(0, 2)
+                        .map((cut, i) => ({
+                          priority: i + 3,
+                          text: `Cut ${
+                            cut.cut_this
+                          } — use ${
+                            cut.keep_this
+                          } instead`,
+                          isProtect: false
+                        }))
+                    ].map((item) => (
+                      <div
+                        key={item.priority}
+                        className="flex items-start
+                        gap-2 text-xs
+                        text-foreground/80
+                        leading-relaxed"
+                      >
+                        <span
+                          className="text-[9px]
+                          font-bold flex-shrink-0
+                          mt-0.5 w-4 h-4 rounded-full
+                          flex items-center
+                          justify-center text-white"
+                          style={{
+                            backgroundColor:
+                              item.isProtect
+                                ? accentHex
+                                : '#9ca3af'
+                          }}
+                        >
+                          {item.priority}
+                        </span>
+                        {item.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Cost Breakdown */}
+            <div className="pt-5 border-t
+            border-border/40 space-y-5">
               <div className="flex items-center
-              justify-between mb-3">
-                <p className="text-[10px]
-                font-semibold uppercase
-                tracking-widest
-                text-muted-foreground/60">
-                  Cost breakdown
-                </p>
+              justify-between">
+                <h3 className="text-card-title">
+                  Cost Breakdown
+                </h3>
                 {isPersonalising && (
                   <p className="text-[10px]
                   text-muted-foreground
@@ -793,281 +684,309 @@ export default function StyleOptionTabs({
                   </p>
                 )}
               </div>
-              <div className="divide-y
-              divide-border/30">
-                {(
-                  personalisedResult
-                    ?.personalised_budget_items ??
-                  option.budget_items.map(b => ({
-                    item: b.item,
-                    adjusted_range: b.range,
-                    achievable: true,
-                    note: b.note,
-                  }))
-                ).map((item, i) => (
-                  <div key={i} className="py-3
-                  first:pt-0 last:pb-0">
-                    <div className="flex items-start
-                    justify-between gap-4">
-                      <span className={`text-sm
-                      leading-snug ${
-                        !item.achievable
-                          ? 'text-muted-foreground/50 line-through'
-                          : 'text-foreground/80'
-                      }`}>
-                        {item.item}
-                      </span>
-                      <span className={`text-sm
-                      font-semibold flex-shrink-0
-                      tabular-nums ${
-                        !item.achievable
-                          ? 'text-muted-foreground/50'
-                          : 'text-foreground'
-                      }`}>
-                        {item.adjusted_range}
-                      </span>
-                    </div>
-                    {item.note && (
-                      <p className="text-xs
-                      text-muted-foreground mt-1
-                      leading-relaxed">
-                        {item.note}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            <div className="border-t
-            border-border/30" />
-
-            {/* What drives the cost */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                What drives the cost
-              </p>
-              <ul className="space-y-2.5">
-                {option.cost_drivers.map(
-                  (driver, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start
-                    gap-2.5 text-sm
-                    text-muted-foreground
-                    leading-relaxed"
-                  >
-                    <span
-                      className="flex-shrink-0
-                      w-1.5 h-1.5 rounded-full
-                      mt-1.5"
-                      style={{
-                        backgroundColor: accentHex,
-                      }}
-                    />
-                    {driver}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t
-            border-border/30" />
-
-            {/* Common budget surprises */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-3">
-                Common budget surprises
-              </p>
-              <ul className="space-y-2.5">
-                {option.budget_surprises.map(
-                  (surprise, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start
-                    gap-2.5 text-sm
-                    text-muted-foreground
-                    leading-relaxed"
-                  >
-                    <span className="flex-shrink-0
-                    text-xs mt-0.5">
-                      ⚠️
-                    </span>
-                    {surprise}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t
-            border-border/30" />
-
-            {/* MUST PROTECT / REDUCE FIRST */}
-            <div className="rounded-xl border
-            border-border/40 overflow-hidden">
-              <div className="grid grid-cols-2
-              divide-x divide-border/40">
-                <div className="p-4">
-                  <p
-                    className="text-[10px]
-                    font-semibold uppercase
-                    tracking-widest mb-3"
-                    style={{ color: accentHex }}
-                  >
-                    Protect first
-                  </p>
-                  <ul className="space-y-2">
-                    {option.atmosphere_protection
-                      .protect_first
-                      .map((item, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start
-                        gap-2 text-xs
-                        text-foreground/80
-                        leading-snug"
-                      >
-                        <span
-                          className="flex-shrink-0
-                          mt-0.5 font-bold text-xs"
-                          style={{ color: accentHex }}
-                        >
-                          ✓
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="p-4">
-                  <p className="text-[10px]
-                  font-semibold uppercase
-                  tracking-widest
-                  text-muted-foreground/60 mb-3">
-                    Reduce first
-                  </p>
-                  <ul className="space-y-2">
-                    {option.atmosphere_protection
-                      .reduce_first
-                      .map((item, i) => (
-                      <li
-                        key={i}
-                        className="flex items-start
-                        gap-2 text-xs
-                        text-muted-foreground/70
-                        leading-snug"
-                      >
-                        <span className="flex-shrink-0
-                        mt-0.5 text-xs">
-                          •
-                        </span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t
-            border-border/30" />
-
-            {/* Preserve the feeling for less */}
-            <div>
-              <p className="text-[10px] font-semibold
-              uppercase tracking-widest
-              text-muted-foreground/60 mb-1">
-                Preserve the feeling for less
-              </p>
-              <p className="text-xs
-              text-muted-foreground mb-4
-              leading-relaxed">
-                These swaps protect the atmosphere
-                while reducing cost.
-              </p>
-              <div className="space-y-4">
-                {option.savings_opportunities.map(
-                  (opp, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl border
-                    border-border/40 p-4 space-y-3"
-                  >
-                    <div className="grid
-                    grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[10px]
-                        font-semibold uppercase
-                        tracking-wider
-                        text-muted-foreground/50
-                        mb-1.5">
-                          Instead of
-                        </p>
-                        <p className="text-xs
-                        text-muted-foreground/60
-                        line-through
-                        leading-relaxed">
-                          {opp.expensive_element}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[10px]
-                        font-semibold uppercase
-                        tracking-wider
-                        text-muted-foreground/50
-                        mb-1.5">
-                          Consider
-                        </p>
-                        <p className="text-xs
-                        text-foreground/80
-                        leading-relaxed">
-                          {opp.lower_cost_alternative}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center
-                    justify-between pt-2
-                    border-t border-border/20">
-                      <span
-                        className="text-xs
-                        font-semibold"
-                        style={{ color: accentHex }}
-                      >
-                        Save {opp.estimated_saving}
-                      </span>
-                      <span className={`
-                        text-[10px] font-semibold
-                        uppercase tracking-wide
-                        px-2.5 py-1 rounded-full
-                        ${opp.atmosphere_impact === 'low'
-                          ? 'bg-green-50 text-green-700'
-                          : opp.atmosphere_impact === 'medium'
-                          ? 'bg-yellow-50 text-yellow-700'
-                          : 'bg-red-50 text-red-700'
-                        }
-                      `}>
-                        {opp.atmosphere_impact === 'low'
-                          ? '✓ Low impact'
-                          : opp.atmosphere_impact === 'medium'
-                          ? '~ Some impact'
-                          : '⚠ High impact'}
-                      </span>
-                    </div>
-
-                  </div>
-                ))}
-              </div>
+              <CostBreakdownDonut
+                items={costBreakdownItems}
+              />
             </div>
 
           </div>
-        </TabsContent>
 
-      </Tabs>
+
+        </div>
+
+        {/* ── SIDEBAR COLUMN (lg: 4 cols) ── */}
+        <div className="lg:col-span-4 space-y-5
+        lg:sticky lg:top-4 lg:self-start">
+
+          {/* CARD: Vendor Brief */}
+          <div
+            className="rounded-2xl border-2
+            p-5 space-y-4"
+            style={{ borderColor: accentHex }}
+          >
+            <h3 className="font-serif font-semibold
+            text-[15px] text-[#1F1B17]">
+              Vendor Brief
+            </h3>
+
+            {/* Inquiry */}
+            <div>
+              <p
+                className="text-label mb-2"
+                style={{ color: accentHex }}
+              >
+                Inquiry Message
+              </p>
+              <p className="text-small
+              line-clamp-4 mb-2">
+                {resolvedInquiry}
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-9 text-xs"
+                onClick={handleCopyInquiry}
+                style={copiedInquiry ? {
+                  borderColor: accentHex,
+                  color: accentHex,
+                } : undefined}
+              >
+                {copiedInquiry
+                  ? '✓ Copied'
+                  : 'Copy inquiry'}
+              </Button>
+            </div>
+
+            {/* Vision */}
+            <div className="border-t
+            border-border/30 pt-4">
+              <p className="text-label mb-2">
+                Full Vision Brief
+              </p>
+              <p className="text-small
+              line-clamp-4 mb-2">
+                {option.vendor_brief.vision}
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-9 text-xs"
+                onClick={handleCopyVision}
+                style={copiedVision ? {
+                  borderColor: accentHex,
+                  color: accentHex,
+                } : undefined}
+              >
+                {copiedVision
+                  ? '✓ Copied'
+                  : 'Copy full brief'}
+              </Button>
+            </div>
+          </div>
+
+          {/* CARD: Why This Fits You */}
+          <div className="rounded-2xl border
+          border-border/40 bg-white p-5 md:p-6">
+            <h3 className="font-serif text-lg
+            font-semibold text-foreground mb-3">
+              Why This Fits You
+            </h3>
+            <p className="text-small">
+              {option.behavioral_description}
+            </p>
+          </div>
+
+          {/* CARD: Don'ts */}
+          <div className="rounded-2xl border
+          border-border/40 bg-white p-5">
+            <h3 className="font-serif font-semibold
+            text-[15px] text-[#1F1B17] mb-3">
+              Don&apos;ts — Tell Your Vendor
+              to Avoid These
+            </h3>
+            <ul className="space-y-2">
+              {option.do_not_list.map((item, i) => (
+                <li
+                  key={i}
+                  className="flex items-start
+                  gap-2.5 text-small"
+                >
+                  <span
+                    className="font-bold mt-0.5
+                    flex-shrink-0 text-xs"
+                    style={{ color: accentHex }}
+                  >
+                    —
+                  </span>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* CARD: Ask Your Vendor */}
+          <div className="rounded-2xl border
+          border-border/40 bg-white p-5">
+            <h3 className="font-serif font-semibold
+            text-[15px] text-[#1F1B17] mb-3">
+              Ask Your Vendor
+            </h3>
+            <ul className="space-y-2">
+              {option.planner.questions_to_ask
+                .map((q, i) => (
+                <li
+                  key={i}
+                  className="flex items-start
+                  gap-2.5 text-small"
+                >
+                  <span
+                    className="text-xs font-bold
+                    flex-shrink-0 mt-0.5 w-4
+                    text-center"
+                    style={{ color: accentHex }}
+                  >
+                    {i + 1}
+                  </span>
+                  {q}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ── ROW 3: BOTTOM 3-COLUMN TILES ── */}
+      <div className="grid grid-cols-1
+      sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        {/* CARD: Common Budget Surprises */}
+        <div className="rounded-2xl border
+        border-border/40 bg-white p-5">
+          <h4 className="text-card-title mb-3">
+            Common Budget Surprises
+          </h4>
+          <ul className="space-y-2">
+            {option.budget_surprises
+              .slice(0, 5)
+              .map((surprise, i) => (
+              <li
+                key={i}
+                className="flex items-start
+                gap-2 text-xs
+                text-muted-foreground
+                leading-relaxed"
+              >
+                <span className="flex-shrink-0
+                text-[10px] mt-0.5">
+                  ⚠️
+                </span>
+                {surprise}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* CARD: Planner Checklist (compact) */}
+        <div className="rounded-2xl border
+        border-border/40 bg-white p-5">
+          <h4 className="text-card-title mb-3">
+            Your Next Steps
+          </h4>
+          <ul className="space-y-2">
+            {/* Folded in from the removed Book By card */}
+            <li
+              className="flex items-start
+              gap-2 text-xs leading-relaxed
+              text-destructive/80"
+            >
+              <div
+                className="w-3 h-3 rounded
+                border border-destructive/80
+                flex-shrink-0 mt-0.5"
+              />
+              {bookingStatus?.genericText ??
+                option.planner.booking_window}
+              {bookingStatus?.calculatedMessage &&
+                ` — ${bookingStatus.calculatedMessage}`}
+            </li>
+            {option.planner
+              .coordination_checklist
+              .slice(0, 5)
+              .map((item, i) => (
+              <li
+                key={i}
+                className="flex items-start
+                gap-2 text-xs
+                text-foreground/80
+                leading-relaxed"
+              >
+                <div
+                  className="w-3 h-3 rounded
+                  border flex-shrink-0 mt-0.5"
+                  style={{ borderColor: accentHex }}
+                />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* CARD: Search Smart (compact) */}
+        <div className="rounded-2xl border
+        border-border/40 bg-white p-5">
+          <h4 className="text-card-title mb-3">
+            Search Smart
+          </h4>
+          <p className="text-label mb-2">
+            Use these
+          </p>
+          <div className="flex flex-wrap
+          gap-1.5 mb-3">
+            {option.vendor_keywords
+              .slice(0, 5)
+              .map((kw, i) => (
+              <span
+                key={i}
+                className="px-2 py-0.5
+                rounded-full text-[10px]
+                font-medium border"
+                style={{
+                  backgroundColor:
+                    `${accentHex}15`,
+                  borderColor:
+                    `${accentHex}40`,
+                  color: accentHex,
+                }}
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
+          <p className="text-label mb-2">
+            Avoid these
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {option.avoid_keywords
+              .slice(0, 5)
+              .map((kw, i) => (
+              <span
+                key={i}
+                className="px-2 py-0.5
+                rounded-full text-[10px]
+                font-medium border
+                text-muted-foreground/50
+                border-border/30
+                bg-muted/20 line-through"
+              >
+                {kw}
+              </span>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── Copy both button ── */}
+      <div className="flex justify-center pt-2">
+        <Button
+          variant="ghost"
+          className="h-9 px-6 text-xs
+          text-muted-foreground
+          hover:text-foreground
+          transition-all duration-200"
+          onClick={handleCopyBoth}
+          style={copiedBoth
+            ? { color: accentHex }
+            : undefined
+          }
+        >
+          {copiedBoth
+            ? '✓ Both copied'
+            : 'Copy both inquiry + vision together'}
+        </Button>
+      </div>
+
     </div>
   )
 }
